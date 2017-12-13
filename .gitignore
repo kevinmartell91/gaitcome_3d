@@ -1,0 +1,8 @@
+#Vision data folders
+visionData/videoCalibration/camera_a/**
+visionData/videoCalibration/camera_b/**
+visionData/videoCalibration/*.mat
+
+#System Files
+.DS_Store
+Thumbs.db
