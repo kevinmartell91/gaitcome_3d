@@ -2,7 +2,7 @@
 visionData/videoCalibration/camera_a/**
 visionData/videoCalibration/camera_b/**
 visionData/videoCalibration/*.mat
-visionData/greenBackground/**
+visionData/removeBackground/**
 
 #System Files
 .DS_Store
