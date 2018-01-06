@@ -3,6 +3,7 @@ visionData/videoCalibration/camera_a/**
 visionData/videoCalibration/camera_b/**
 visionData/videoCalibration/*.mat
 visionData/removeBackground/**
+visionData/planeVideos/**
 
 #System Files
 .DS_Store

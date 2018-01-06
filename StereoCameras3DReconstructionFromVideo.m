@@ -25,8 +25,8 @@ MIN_AREA = 2;
 MAX_AREA = 60;
 
 % TYPE_PROC = 1
-THRESH_L = 180;
-THRESH_R = 190;
+THRESH_L = 100;
+THRESH_R = 100;
 % THRESH_L = 250;
 % THRESH_R = 250;
 SURGE_MEAN_AREA = 0.9;      % multiplier to filter blob sizes detected
@@ -38,8 +38,8 @@ LEF_LIM = 70;
 RIG_LIM = 1280 - 70;
 
 % Out of Phase frames
-isSync = false;
-outOfPhase_l = 0;             % number of out of phase left frames
+isSync = true;
+outOfPhase_l =0;             % number of out of phase left frames
 outOfPhase_r = 0;             % number of out of phase right frames
 isSyncBlob_left_detecteddd = false;
 isSyncBlob_right_detecteddd = false;
@@ -47,7 +47,7 @@ SYNC_UMBRAL = 250;
 
 
 % Skip frames 
-contFrames = 4 * 120;           % init at second ?
+contFrames = 6 * 120;           % init at second ?
 maxNumFrames = 0;
 
 
@@ -74,9 +74,9 @@ ka = CKinematicAnalysis;
 
 % Video file reader
 videoFileLeft  = ... % camera A
-    '../ekenRawFiles/camera_a/test_10_video/FHD0608.MOV'; 
+    '../ekenRawFiles/camera_a/test_11_video/FHD0629.MOV'; 
 videoFileRight = ... % camera B
-    '../ekenRawFiles/camera_b/test_10_video/FHD0601.MOV'; 
+    '../ekenRawFiles/camera_b/test_11_video/FHD0623.MOV'; 
 
 % Image file reader
 backgroundLeft  = ... % camera A
@@ -169,7 +169,6 @@ while contFrames < maxNumFrames
         frameLeft = read(movleft, contFrames);
         frameRight = read(movRight, contFrames );       
 
-       
         step(player_left, frameLeft);
         step(player_right, frameRight);
         
@@ -235,7 +234,9 @@ while contFrames < maxNumFrames
 
     
     %% Find point correspondance between images
-    
+    frameLeft = filterRGBChannels(frameLeft);
+    frameRight = filterRGBChannels(frameRight);
+
     if TYPE_PROC == 1
         
         [conv2Left frameLeftBinary markersPositionLeft] = ...
@@ -617,12 +618,12 @@ function [conv2Img markerImage markerPoints] = TestKernels(I1,THRESH_MIN,SURGE_M
     %     subplot(2,3,1), imshow(I1), title('color img');
         
         % Convert to binary images depending on a threshold
-    GI1 = rgb2gray(I1);
+    % GI1 = rgb2gray(I1);
     %     subplot(2,3,2), imshow(GI1), title('gray img');
         
     %     thresh_min = THRESH_MIN;
     %     thresh_max = THRESH_MAX;
-    BW1_TH = THRESH_MIN < GI1;
+    BW1_TH = THRESH_MIN < I1;
     %     subplot(2,3,3), imshow(BW1_TH), title('thresh_min img');
         
     %     BW1_TH = im2uint8(BW1_TH);
@@ -673,20 +674,20 @@ function [conv2Img markerImage markerPoints] = TestKernels(I1,THRESH_MIN,SURGE_M
    
     markerPointsIsideArea = [];
     
-    length = size(markerPoints,1);
-    id = 1;
-    if length > 0
-        for i=1:length
-            if markerPoints(i,2) >  TOP_LIM && ...
-               markerPoints(i,2) <  BOT_LIM && ...
-               markerPoints(i,1) >  LEF_LIM && ...
-               markerPoints(i,1) <  RIG_LIM 
-                markerPointsIsideArea(id,:) = markerPoints(i,:);
-                id = id + 1;
-            end
-        end
-    end
-    markerPoints = markerPointsIsideArea;
+    % length = size(markerPoints,1);
+    % id = 1;
+    % if length > 0
+    %     for i=1:length
+    %         if markerPoints(i,2) >  TOP_LIM && ...
+    %            markerPoints(i,2) <  BOT_LIM && ...
+    %            markerPoints(i,1) >  LEF_LIM && ...
+    %            markerPoints(i,1) <  RIG_LIM 
+    %             markerPointsIsideArea(id,:) = markerPoints(i,:);
+    %             id = id + 1;
+    %         end
+    %     end
+    % end
+    % markerPoints = markerPointsIsideArea;
     conv2Img=marker_blobs;
 end
 
@@ -1262,4 +1263,14 @@ function [ Result ] = Factorial2( Value )
     else
         Result = 1;
     end
+end
+
+function img = filterRGBChannels(IMG)
+    r=IMG(:,:,1);
+    g=IMG(:,:,2);
+    b=IMG(:,:,3);
+
+    whiteImage = 255 * ones(720,1280, 'uint8');
+
+    img = whiteImage - (r.*(r-b));
 end
