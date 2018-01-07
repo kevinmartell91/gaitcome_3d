@@ -29,7 +29,7 @@ THRESH_L = 100;
 THRESH_R = 100;
 % THRESH_L = 250;
 % THRESH_R = 250;
-SURGE_MEAN_AREA = 0.9;      % multiplier to filter blob sizes detected
+SURGE_MEAN_AREA = 1;      % multiplier to filter blob sizes detected
 
 % Limits
 TOP_LIM = 70;
@@ -128,7 +128,7 @@ player3D =  pcplayer( ...
 xlabel(player3D.Axes,'x-axis (m)');
 ylabel(player3D.Axes,'y-axis (m)');
 zlabel(player3D.Axes,'z-axis (m)');
-      
+  
 %% Reconstruct the 3D locations of matched Points	
 % compute camera matrices for each position of the camera	
 camMatrixLeft = ...
@@ -214,28 +214,6 @@ while contFrames < maxNumFrames
     end
       
 
-    %% Remove lens distortion
-  
-    frameLeft = ...
-        undistortImage( ...
-            frameLeft, ...
-            stereoParams_test_10_total_error.CameraParameters1 ...
-        );
-    frameRight = ...
-        undistortImage( ...
-            frameRight, ...
-            stereoParams_test_10_total_error.CameraParameters2 ...
-        );
-    
-    % show
-    % figure
-    % imshowpair(frameLeft,frameRight,'montage');
-    % title('L         Undistorted Images         R');
-
-    
-    %% Find point correspondance between images
-    frameLeft = filterRGBChannels(frameLeft);
-    frameRight = filterRGBChannels(frameRight);
 
     if TYPE_PROC == 1
         
@@ -255,6 +233,29 @@ while contFrames < maxNumFrames
         
     end
       
+
+
+    %% Remove lens distortion
+    
+    frameLeft = ...
+        undistortImage( ...
+            frameLeft, ...
+            stereoParams_test_10_total_error.CameraParameters1 ...
+        );
+    frameRight = ...
+        undistortImage( ...
+            frameRight, ...
+            stereoParams_test_10_total_error.CameraParameters2 ...
+        );
+    
+    % show
+    % figure
+    % imshowpair(frameLeft,frameRight,'montage');
+    % title('L         Undistorted Images         R');
+
+    
+    
+
     if size(markersPositionLeft,1) == NUM_MARKERS && ...
         size(markersPositionRight,1) == NUM_MARKERS
        
@@ -618,12 +619,19 @@ function [conv2Img markerImage markerPoints] = TestKernels(I1,THRESH_MIN,SURGE_M
     %     subplot(2,3,1), imshow(I1), title('color img');
         
         % Convert to binary images depending on a threshold
-    % GI1 = rgb2gray(I1);
+    % GI1 = rgb2gray(I1); 
     %     subplot(2,3,2), imshow(GI1), title('gray img');
         
     %     thresh_min = THRESH_MIN;
     %     thresh_max = THRESH_MAX;
-    BW1_TH = THRESH_MIN < I1;
+    r=I1(:,:,1);
+    g=I1(:,:,2);
+    b=I1(:,:,3);
+    % img = THRESH_MIN < g;
+    whiteImage = 255 * ones(720,1280, 'uint8');
+    img = whiteImage - (r.*((4.*r)-(1.2.*b)));
+
+    BW1_TH = THRESH_MIN < img ; % green channel
     %     subplot(2,3,3), imshow(BW1_TH), title('thresh_min img');
         
     %     BW1_TH = im2uint8(BW1_TH);
@@ -658,7 +666,7 @@ function [conv2Img markerImage markerPoints] = TestKernels(I1,THRESH_MIN,SURGE_M
     
     stats = regionprops(BW1, 'Area','Eccentricity'); 
     mean_area =  mean([stats.Area]);
-    ids = find([stats.Area] <= mean_area * SURGE_MEAN_AREA); 
+    ids = find([stats.Area] > mean_area * SURGE_MEAN_AREA); 
     marker_blobs = ismember(labelmatrix(BW1), ids);
     
    
@@ -1272,5 +1280,15 @@ function img = filterRGBChannels(IMG)
 
     whiteImage = 255 * ones(720,1280, 'uint8');
 
-    img = whiteImage - (r.*(r-b));
+    % img = whiteImage - (r.*(r-b));
+    img  = 100 < g
+
+
+    GI1 = rgb2gray(IMG);
+    BW1_TH = 160 < GI1
+
+    k1=imfuse(BW1_TH,50 < g,'montage'); %composite of 2images
+    imshow(k1); 
+
+    INT =1;
 end
