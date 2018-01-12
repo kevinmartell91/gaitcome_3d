@@ -163,8 +163,6 @@ movRight = VideoReader(videoFileRight);
 iteFrames = INI_SEC * movleft.FrameRate;
 endFrames = END_SEC * movRight.FrameRate;
 
-% getTest();
-
 %% Read pair of frames from video in while loop
 while iteFrames < endFrames 
 
@@ -352,25 +350,6 @@ while iteFrames < endFrames
         lhee_x{idx_raw_data}= lhee('x'); lhee_y{idx_raw_data}= lhee('y'); lhee_z{idx_raw_data}= lhee('z');
         lteo_x{idx_raw_data}= lteo('x'); lteo_y{idx_raw_data}= lteo('y'); lteo_z{idx_raw_data}= lteo('z');
 
-
-%                                          % JsonEncode after analysing all frames that belong to 1 gait cycle
-%                                         if idx_raw_data < 5
-%                                             putKinematicsAnalysisMatlabRawPositions = ...
-%                                                 jsonencode(table(lbwt_x, lbwt_y, lbwt_z, ...
-%                                                     lfwt_x, lfwt_y, lfwt_z, ...
-%                                                     ltrc_x, ltrc_y, ltrc_z, ...
-%                                                     lkne_x, lkne_y, lkne_z, ...
-%                                                     lank_x, lank_y, lank_z, ...
-%                                                     lhee_x, lhee_y, lhee_z, ...
-%                                                     lteo_x, lteo_y, lteo_z));
-% 
-%                                             
-% 
-%                                         else
-%                                              rawAngData = cookRawData_MarkerPostions(putKinematicsAnalysisMatlabRawPositions);
-%                                         end
-
-        
                 
         % %%      Calulate knee angles
         if NUM_MARKERS == 7
@@ -390,7 +369,7 @@ while iteFrames < endFrames
             transversal_ank_ang(idx_raw_data) = lstResThreePlanes.T_ANG_ANK
 
   
-            if idx_raw_data > 10
+            if idx_raw_data > 4
 
                 kinematicsAnalysisGaitAngles = ...
                     jsonencode(table( ...
@@ -417,13 +396,11 @@ while iteFrames < endFrames
                         lank_x, lank_y, lank_z, ...
                         lhee_x, lhee_y, lhee_z, ...
                         lteo_x, lteo_y, lteo_z));
-                % rawMarkersPositions = cookRawData_MarkerPostions(rawMarkersPositions);
 
                 kinematicDataToServerAsJson = ...
                     cookKinematicData(kinematicsAnalysisGaitAngles,rawMarkersPositions); 
-                    % cookAnglesWithPercentageProgress(kinematicsAnalysisGaitAngles);  
-                    % JOIN the final result
-                
+%               call_put_method_from_onlineMatlab_OK(kinematicDataToServerAsJson);
+                testPUTPUT(kinematicDataToServerAsJson);
                 kevin='luya';
             end    
 
@@ -1409,60 +1386,23 @@ function img = filterRGBChannels(IMG)
     INT =1;
 end
 
-function res = postTest (DATA)
+function res = postTest_weird_error (DATA)
 
-    % DATA  = '[{"lbwt_x": [-0.393105537, -0.396787971],"lbwt_y": [0.5032323, 0.505407453],"lbwt_z": [2.09581971, 2.10831928],"lfwt_x": [-0.452916354, -0.453837514],"lfwt_y": [0.465313643, 0.465899676],"lfwt_z": [2.06577969, 2.06500983],"ltrc_x": [-0.587236404, -0.587881267],"ltrc_y": [0.489899963, 0.49217546],"ltrc_z": [2.08689213, 2.08598948],"lkne_x": [-0.449661583, -0.454836875],"lkne_y": [0.0472802892, 0.0475298762],"lkne_z": [2.07491016, 2.07238793],"lank_x": [-0.196061328, -0.203023106],"lank_y": [-0.420783848, -0.42057389],"lank_z": [2.17449808, 2.16681194],"lhee_x": [-0.309819102, -0.317615777],"lhee_y": [-0.284540892, -0.285112321], "lhee_z": [2.03655028, 2.03527379],"lteo_x": [-0.363877326, -0.372853577],"lteo_y": [-0.400856256, -0.402344018],"lteo_z": [2.09296727, 2.09668612]}]';
-    % disp(DATA);
     method = matlab.net.http.RequestMethod.POST;
 
     contentType = matlab.net.http.HeaderField('ContentType','application/json');
     token       = matlab.net.http.HeaderField('x-access-token','eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyIkX18iOnsic3RyaWN0TW9kZSI6dHJ1ZSwiZ2V0dGVycyI6e30sIndhc1BvcHVsYXRlZCI6ZmFsc2UsImFjdGl2ZVBhdGhzIjp7InBhdGhzIjp7Im1lZGljYWxDZW50ZXJzLnJlcXVlc3RlZF9hdCI6ImRlZmF1bHQiLCJfX3YiOiJpbml0IiwiYWRkcmVzcy5jb3VudHJ5IjoiaW5pdCIsImFkZHJlc3MuemlwIjoiaW5pdCIsImFkZHJlc3Muc3RhdGUiOiJpbml0IiwiYWRkcmVzcy5jaXR5IjoiaW5pdCIsImFkZHJlc3Muc3RyZWV0IjoiaW5pdCIsIm1lZGljYWxDZW50ZXJzLmFjY2VwdGVkX2F0IjoiaW5pdCIsIm1lZGljYWxDZW50ZXJzLnN0YXR1c19yZXF1ZXN0IjoiaW5pdCIsIm1lZGljYWxDZW50ZXJzLm5hbWUiOiJpbml0IiwibWVkaWNhbENlbnRlcnMuX2lkIjoiaW5pdCIsIm5hbWVzIjoiaW5pdCIsImdlbmRlciI6ImluaXQiLCJpZF9Eb2N1bWVudF90eXBlIjoiaW5pdCIsImlkX0RvY3VtZW50X251bSI6ImluaXQiLCJiaXJ0aCI6ImluaXQiLCJlbWFpbCI6ImluaXQiLCJwaG9uZSI6ImluaXQiLCJjZWxscGhvbmUiOiJpbml0IiwibnVtX2N0bXAiOiJpbml0IiwibnVtX25kdGEiOiJpbml0IiwiaXNfYWN0aXZlIjoiaW5pdCIsInVzZXJuYW1lIjoiaW5pdCIsInBhc3N3b3JkIjoiaW5pdCIsIl9pZCI6ImluaXQifSwic3RhdGVzIjp7Imlnbm9yZSI6e30sImRlZmF1bHQiOnsibWVkaWNhbENlbnRlcnMucmVxdWVzdGVkX2F0Ijp0cnVlfSwiaW5pdCI6eyJfX3YiOnRydWUsImFkZHJlc3MuY291bnRyeSI6dHJ1ZSwiYWRkcmVzcy56aXAiOnRydWUsImFkZHJlc3Muc3RhdGUiOnRydWUsImFkZHJlc3MuY2l0eSI6dHJ1ZSwiYWRkcmVzcy5zdHJlZXQiOnRydWUsIm1lZGljYWxDZW50ZXJzLmFjY2VwdGVkX2F0Ijp0cnVlLCJtZWRpY2FsQ2VudGVycy5zdGF0dXNfcmVxdWVzdCI6dHJ1ZSwibWVkaWNhbENlbnRlcnMubmFtZSI6dHJ1ZSwibWVkaWNhbENlbnRlcnMuX2lkIjp0cnVlLCJuYW1lcyI6dHJ1ZSwiZ2VuZGVyIjp0cnVlLCJpZF9Eb2N1bWVudF90eXBlIjp0cnVlLCJpZF9Eb2N1bWVudF9udW0iOnRydWUsImJpcnRoIjp0cnVlLCJlbWFpbCI6dHJ1ZSwicGhvbmUiOnRydWUsImNlbGxwaG9uZSI6dHJ1ZSwibnVtX2N0bXAiOnRydWUsIm51bV9uZHRhIjp0cnVlLCJpc19hY3RpdmUiOnRydWUsInVzZXJuYW1lIjp0cnVlLCJwYXNzd29yZCI6dHJ1ZSwiX2lkIjp0cnVlfSwibW9kaWZ5Ijp7fSwicmVxdWlyZSI6e319LCJzdGF0ZU5hbWVzIjpbInJlcXVpcmUiLCJtb2RpZnkiLCJpbml0IiwiZGVmYXVsdCIsImlnbm9yZSJdfSwiZW1pdHRlciI6eyJkb21haW4iOm51bGwsIl9ldmVudHMiOnt9LCJfZXZlbnRzQ291bnQiOjAsIl9tYXhMaXN0ZW5lcnMiOjB9fSwiaXNOZXciOmZhbHNlLCJfZG9jIjp7ImFkZHJlc3MiOnsiY291bnRyeSI6IlBlcnUiLCJ6aXAiOjQ1NzY0NSwic3RhdGUiOiJMaW1hIiwiY2l0eSI6IkxpbWEiLCJzdHJlZXQiOiJDYWxsZSBBbGFtZWRhIFNhbnRvcyAzNDQgRHB0byAzMDQifSwibWVkaWNhbENlbnRlcnMiOnsicmVxdWVzdGVkX2F0IjoiMjAxNi0xMi0xNVQwMTo1Mzo0Mi4xMzJaIiwiYWNjZXB0ZWRfYXQiOiIyMDE2LTExLTIwVDA0OjE5OjEzLjAwMFoiLCJzdGF0dXNfcmVxdWVzdCI6IjEiLCJuYW1lIjoiTHVpcyBNYW51ZWwiLCJfaWQiOiIzNDU2Nzg5MDQ1NjU4NDhmcjVnciJ9LCJfX3YiOjAsIm5hbWVzIjoiSG9ydGVuY2lhIiwiZ2VuZGVyIjoiNCIsImlkX0RvY3VtZW50X3R5cGUiOiJETkkiLCJpZF9Eb2N1bWVudF9udW0iOjEyMzQ1Njc4LCJiaXJ0aCI6IjIwMTYtMTEtMjBUMDQ6MTk6MTMuMDAwWiIsImVtYWlsIjoibWFudWVsQGdtYWlsLmNvbSIsInBob25lIjoiMjM0IDU0IDEzIiwiY2VsbHBob25lIjoiOTk5IDk5OSA5OTkiLCJudW1fY3RtcCI6NjU0MiwibnVtX25kdGEiOjU0NTM0NTQzLCJpc19hY3RpdmUiOmZhbHNlLCJ1c2VybmFtZSI6InRlcmFwZXV0YSIsInBhc3N3b3JkIjoiYWRtaW4iLCJfaWQiOiI1ODUxZjYwMTczZGMxMTA3MmEwYTFhOTIifSwiX3ByZXMiOnsiJF9fb3JpZ2luYWxfc2F2ZSI6W251bGwsbnVsbF0sIiRfX29yaWdpbmFsX3ZhbGlkYXRlIjpbbnVsbF0sIiRfX29yaWdpbmFsX3JlbW92ZSI6W251bGxdfSwiX3Bvc3RzIjp7IiRfX29yaWdpbmFsX3NhdmUiOltdLCIkX19vcmlnaW5hbF92YWxpZGF0ZSI6W10sIiRfX29yaWdpbmFsX3JlbW92ZSI6W119LCJpYXQiOjE0ODE3NjY4MjJ9.xDNN-rILCYc5vqVJzpLn3DIqOqMMPTEBuYHgvISoHPw');
     header = [contentType token];
 
-% , ...
-    data = jsondecode(DATA);
-   
-    obj = data(1,1);
-    res  = ...
-        jsonencode( ...
-            containers.Map( ...
-                {
-                    'lbwt_x','lbwt_y','lbwt_z', ...
-                    'lfwt_x','lfwt_y','lfwt_z', ...
-                    'ltrc_x','ltrc_y','ltrc_z', ...
-                    'lkne_x','lkne_y','lkne_z', ...
-                    'lank_x','lank_y','lank_z', ...
-                    'lhee_x','lhee_y','lhee_z', ...
-                    'lteo_x','lteo_y','lteo_z' ...
-                }, ...
-                {
-                    obj.lbwt_x,obj.lbwt_y,obj.lbwt_z ...
-                    obj.lfwt_x,obj.lfwt_y,obj.lfwt_z ...
-                    obj.ltrc_x,obj.ltrc_y,obj.ltrc_z ...
-                    obj.lkne_x,obj.lkne_y,obj.lkne_z ...
-                    obj.lank_x,obj.lank_y,obj.lank_z ...
-                    obj.lhee_x,obj.lhee_y,obj.lhee_z ...
-                    obj.lteo_x,obj.lteo_y,obj.lteo_z ...
-                } ...
-            ) ...
-        )
-
-
     input = struct('kinematics_analysis_id','58327f939d4fe93d29435260');
     paramsInput = struct('params', input);
 
     paramsInput = jsonencode(DATA);
  
-    g = {'lank_x':-0.196061328,'lank_y':-0.420783848,'lank_z':2.17449808,'lbwt_x':-0.393105537,'lbwt_y':0.5032323,'lbwt_z':2.09581971,'lfwt_x':-0.452916354,'lfwt_y':0.465313643,'lfwt_z':2.06577969,'lhee_x':-0.309819102,'lhee_y':-0.284540892,'lhee_z':2.03655028,'lkne_x':-0.449661583,'lkne_y':0.0472802892,'lkne_z':2.07491016,'lteo_x':-0.363877326,'lteo_y':-0.400856256,'lteo_z':2.09296727,'ltrc_x':-0.587236404,'ltrc_y':0.489899963,'ltrc_z':2.08689213};
-    mDATA = '[{"lbwt_x":-0.393105537,"lbwt_y":0.5032323,"lbwt_z":2.09581971,"lfwt_x":-0.452916354,"lfwt_y":0.465313643,"lfwt_z":2.06577969,"ltrc_x":-0.587236404,"ltrc_y":0.489899963,"ltrc_z":2.08689213,"lkne_x":-0.449661583,"lkne_y":0.0472802892,"lkne_z":2.07491016,"lank_x":-0.196061328,"lank_y":-0.420783848,"lank_z":2.17449808,"lhee_x":-0.309819102,"lhee_y":-0.284540892,"lhee_z":2.03655028,"lteo_x":-0.363877326,"lteo_y":-0.400856256,"lteo_z":2.09296727}]';
-    mjson = '[{"lbwt_x":-0.393105537,"lbwt_y":0.5032323,"lbwt_z":2.09581971,"lfwt_x":-0.452916354,"lfwt_y":0.465313643,"lfwt_z":2.06577969,"ltrc_x":-0.587236404,"ltrc_y":0.489899963,"ltrc_z":2.08689213,"lkne_x":-0.449661583,"lkne_y":0.0472802892,"lkne_z":2.07491016,"lank_x":-0.196061328,"lank_y":-0.420783848,"lank_z":2.17449808,"lhee_x":-0.309819102,"lhee_y":-0.284540892,"lhee_z":2.03655028,"lteo_x":-0.363877326,"lteo_y":-0.400856256,"lteo_z":2.09296727}]';
     body = {json, paramsInput};
     body = matlab.net.http.MessageBody(body);
+ 
     disp(body)
-
-% From express server access  to:
-    % req.body.lbwt_y; = req.body.data.lbwt_y;
-    % req.params.kinematics_analysis_id, = req.body.data.params.kinematics_analysis_id;
 
     request = matlab.net.http.RequestMessage(method,header,body);
 
@@ -1470,10 +1410,10 @@ function res = postTest (DATA)
     response = send(request,uri);
     show(response)
     disp(response)
-    int  =1;
+
 end
 
-function getTest()
+function call_get_method_test_OK()
 
     method = matlab.net.http.RequestMethod.GET;
 
@@ -1488,94 +1428,22 @@ function getTest()
 
 end
 
-function putTest ()
+function call_put_method_from_onlineMatlab_OK()
 
-    method = matlab.net.http.RequestMethod.PUT;
-
-    contentType = matlab.net.http.HeaderField('ContentType','application/json');
-    token       = matlab.net.http.HeaderField('x-access-token','eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyIkX18iOnsic3RyaWN0TW9kZSI6dHJ1ZSwiZ2V0dGVycyI6e30sIndhc1BvcHVsYXRlZCI6ZmFsc2UsImFjdGl2ZVBhdGhzIjp7InBhdGhzIjp7Im1lZGljYWxDZW50ZXJzLnJlcXVlc3RlZF9hdCI6ImRlZmF1bHQiLCJfX3YiOiJpbml0IiwiYWRkcmVzcy5jb3VudHJ5IjoiaW5pdCIsImFkZHJlc3MuemlwIjoiaW5pdCIsImFkZHJlc3Muc3RhdGUiOiJpbml0IiwiYWRkcmVzcy5jaXR5IjoiaW5pdCIsImFkZHJlc3Muc3RyZWV0IjoiaW5pdCIsIm1lZGljYWxDZW50ZXJzLmFjY2VwdGVkX2F0IjoiaW5pdCIsIm1lZGljYWxDZW50ZXJzLnN0YXR1c19yZXF1ZXN0IjoiaW5pdCIsIm1lZGljYWxDZW50ZXJzLm5hbWUiOiJpbml0IiwibWVkaWNhbENlbnRlcnMuX2lkIjoiaW5pdCIsIm5hbWVzIjoiaW5pdCIsImdlbmRlciI6ImluaXQiLCJpZF9Eb2N1bWVudF90eXBlIjoiaW5pdCIsImlkX0RvY3VtZW50X251bSI6ImluaXQiLCJiaXJ0aCI6ImluaXQiLCJlbWFpbCI6ImluaXQiLCJwaG9uZSI6ImluaXQiLCJjZWxscGhvbmUiOiJpbml0IiwibnVtX2N0bXAiOiJpbml0IiwibnVtX25kdGEiOiJpbml0IiwiaXNfYWN0aXZlIjoiaW5pdCIsInVzZXJuYW1lIjoiaW5pdCIsInBhc3N3b3JkIjoiaW5pdCIsIl9pZCI6ImluaXQifSwic3RhdGVzIjp7Imlnbm9yZSI6e30sImRlZmF1bHQiOnsibWVkaWNhbENlbnRlcnMucmVxdWVzdGVkX2F0Ijp0cnVlfSwiaW5pdCI6eyJfX3YiOnRydWUsImFkZHJlc3MuY291bnRyeSI6dHJ1ZSwiYWRkcmVzcy56aXAiOnRydWUsImFkZHJlc3Muc3RhdGUiOnRydWUsImFkZHJlc3MuY2l0eSI6dHJ1ZSwiYWRkcmVzcy5zdHJlZXQiOnRydWUsIm1lZGljYWxDZW50ZXJzLmFjY2VwdGVkX2F0Ijp0cnVlLCJtZWRpY2FsQ2VudGVycy5zdGF0dXNfcmVxdWVzdCI6dHJ1ZSwibWVkaWNhbENlbnRlcnMubmFtZSI6dHJ1ZSwibWVkaWNhbENlbnRlcnMuX2lkIjp0cnVlLCJuYW1lcyI6dHJ1ZSwiZ2VuZGVyIjp0cnVlLCJpZF9Eb2N1bWVudF90eXBlIjp0cnVlLCJpZF9Eb2N1bWVudF9udW0iOnRydWUsImJpcnRoIjp0cnVlLCJlbWFpbCI6dHJ1ZSwicGhvbmUiOnRydWUsImNlbGxwaG9uZSI6dHJ1ZSwibnVtX2N0bXAiOnRydWUsIm51bV9uZHRhIjp0cnVlLCJpc19hY3RpdmUiOnRydWUsInVzZXJuYW1lIjp0cnVlLCJwYXNzd29yZCI6dHJ1ZSwiX2lkIjp0cnVlfSwibW9kaWZ5Ijp7fSwicmVxdWlyZSI6e319LCJzdGF0ZU5hbWVzIjpbInJlcXVpcmUiLCJtb2RpZnkiLCJpbml0IiwiZGVmYXVsdCIsImlnbm9yZSJdfSwiZW1pdHRlciI6eyJkb21haW4iOm51bGwsIl9ldmVudHMiOnt9LCJfZXZlbnRzQ291bnQiOjAsIl9tYXhMaXN0ZW5lcnMiOjB9fSwiaXNOZXciOmZhbHNlLCJfZG9jIjp7ImFkZHJlc3MiOnsiY291bnRyeSI6IlBlcnUiLCJ6aXAiOjQ1NzY0NSwic3RhdGUiOiJMaW1hIiwiY2l0eSI6IkxpbWEiLCJzdHJlZXQiOiJDYWxsZSBBbGFtZWRhIFNhbnRvcyAzNDQgRHB0byAzMDQifSwibWVkaWNhbENlbnRlcnMiOnsicmVxdWVzdGVkX2F0IjoiMjAxNi0xMi0xNVQwMTo1Mzo0Mi4xMzJaIiwiYWNjZXB0ZWRfYXQiOiIyMDE2LTExLTIwVDA0OjE5OjEzLjAwMFoiLCJzdGF0dXNfcmVxdWVzdCI6IjEiLCJuYW1lIjoiTHVpcyBNYW51ZWwiLCJfaWQiOiIzNDU2Nzg5MDQ1NjU4NDhmcjVnciJ9LCJfX3YiOjAsIm5hbWVzIjoiSG9ydGVuY2lhIiwiZ2VuZGVyIjoiNCIsImlkX0RvY3VtZW50X3R5cGUiOiJETkkiLCJpZF9Eb2N1bWVudF9udW0iOjEyMzQ1Njc4LCJiaXJ0aCI6IjIwMTYtMTEtMjBUMDQ6MTk6MTMuMDAwWiIsImVtYWlsIjoibWFudWVsQGdtYWlsLmNvbSIsInBob25lIjoiMjM0IDU0IDEzIiwiY2VsbHBob25lIjoiOTk5IDk5OSA5OTkiLCJudW1fY3RtcCI6NjU0MiwibnVtX25kdGEiOjU0NTM0NTQzLCJpc19hY3RpdmUiOmZhbHNlLCJ1c2VybmFtZSI6InRlcmFwZXV0YSIsInBhc3N3b3JkIjoiYWRtaW4iLCJfaWQiOiI1ODUxZjYwMTczZGMxMTA3MmEwYTFhOTIifSwiX3ByZXMiOnsiJF9fb3JpZ2luYWxfc2F2ZSI6W251bGwsbnVsbF0sIiRfX29yaWdpbmFsX3ZhbGlkYXRlIjpbbnVsbF0sIiRfX29yaWdpbmFsX3JlbW92ZSI6W251bGxdfSwiX3Bvc3RzIjp7IiRfX29yaWdpbmFsX3NhdmUiOltdLCIkX19vcmlnaW5hbF92YWxpZGF0ZSI6W10sIiRfX29yaWdpbmFsX3JlbW92ZSI6W119LCJpYXQiOjE0ODE3NjY4MjJ9.xDNN-rILCYc5vqVJzpLn3DIqOqMMPTEBuYHgvISoHPw');
-    header = [contentType token];
-
-    input = struct('kinematics_analysis_id','58327f939d4fe93d29435260');
-    paramsInput = struct('params', input);
-
-    paramsInput = jsonencode(paramsInput);
-    body = { paramsInput};
-    body = matlab.net.http.MessageBody(body);
-    disp(body)
-
-% From express server access  to:
-    % req.body.lbwt_y; = req.body.data.lbwt_y;
-    % req.params.kinematics_analysis_id, = req.body.data.params.kinematics_analysis_id;
-
-    request = matlab.net.http.RequestMessage(method,header,body);
-
-    uri = matlab.net.URI('http://52.89.123.49:8080/api/kinematics_analysis_matlab/58327f939d4fe93d29435260');
-    response = send(request,uri);
-    show(response) 
-end
-
-function putOnOnlineMatlab()
-    method = matlab.net.http.RequestMethod.PUT;
+    uri = matlab.net.URI('http://52.89.123.49:8080/api/kinematics_analysis_matlab/58327fa19d4fe93d29435261');
 
     contentType = matlab.net.http.HeaderField('ContentType','application/json');
     token       = matlab.net.http.HeaderField('x-access-token','eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyIkX18iOnsic3RyaWN0TW9kZSI6dHJ1ZSwiZ2V0dGVycyI6e30sIndhc1BvcHVsYXRlZCI6ZmFsc2UsImFjdGl2ZVBhdGhzIjp7InBhdGhzIjp7Im1lZGljYWxDZW50ZXJzLnJlcXVlc3RlZF9hdCI6ImRlZmF1bHQiLCJfX3YiOiJpbml0IiwiYWRkcmVzcy5jb3VudHJ5IjoiaW5pdCIsImFkZHJlc3MuemlwIjoiaW5pdCIsImFkZHJlc3Muc3RhdGUiOiJpbml0IiwiYWRkcmVzcy5jaXR5IjoiaW5pdCIsImFkZHJlc3Muc3RyZWV0IjoiaW5pdCIsIm1lZGljYWxDZW50ZXJzLmFjY2VwdGVkX2F0IjoiaW5pdCIsIm1lZGljYWxDZW50ZXJzLnN0YXR1c19yZXF1ZXN0IjoiaW5pdCIsIm1lZGljYWxDZW50ZXJzLm5hbWUiOiJpbml0IiwibWVkaWNhbENlbnRlcnMuX2lkIjoiaW5pdCIsIm5hbWVzIjoiaW5pdCIsImdlbmRlciI6ImluaXQiLCJpZF9Eb2N1bWVudF90eXBlIjoiaW5pdCIsImlkX0RvY3VtZW50X251bSI6ImluaXQiLCJiaXJ0aCI6ImluaXQiLCJlbWFpbCI6ImluaXQiLCJwaG9uZSI6ImluaXQiLCJjZWxscGhvbmUiOiJpbml0IiwibnVtX2N0bXAiOiJpbml0IiwibnVtX25kdGEiOiJpbml0IiwiaXNfYWN0aXZlIjoiaW5pdCIsInVzZXJuYW1lIjoiaW5pdCIsInBhc3N3b3JkIjoiaW5pdCIsIl9pZCI6ImluaXQifSwic3RhdGVzIjp7Imlnbm9yZSI6e30sImRlZmF1bHQiOnsibWVkaWNhbENlbnRlcnMucmVxdWVzdGVkX2F0Ijp0cnVlfSwiaW5pdCI6eyJfX3YiOnRydWUsImFkZHJlc3MuY291bnRyeSI6dHJ1ZSwiYWRkcmVzcy56aXAiOnRydWUsImFkZHJlc3Muc3RhdGUiOnRydWUsImFkZHJlc3MuY2l0eSI6dHJ1ZSwiYWRkcmVzcy5zdHJlZXQiOnRydWUsIm1lZGljYWxDZW50ZXJzLmFjY2VwdGVkX2F0Ijp0cnVlLCJtZWRpY2FsQ2VudGVycy5zdGF0dXNfcmVxdWVzdCI6dHJ1ZSwibWVkaWNhbENlbnRlcnMubmFtZSI6dHJ1ZSwibWVkaWNhbENlbnRlcnMuX2lkIjp0cnVlLCJuYW1lcyI6dHJ1ZSwiZ2VuZGVyIjp0cnVlLCJpZF9Eb2N1bWVudF90eXBlIjp0cnVlLCJpZF9Eb2N1bWVudF9udW0iOnRydWUsImJpcnRoIjp0cnVlLCJlbWFpbCI6dHJ1ZSwicGhvbmUiOnRydWUsImNlbGxwaG9uZSI6dHJ1ZSwibnVtX2N0bXAiOnRydWUsIm51bV9uZHRhIjp0cnVlLCJpc19hY3RpdmUiOnRydWUsInVzZXJuYW1lIjp0cnVlLCJwYXNzd29yZCI6dHJ1ZSwiX2lkIjp0cnVlfSwibW9kaWZ5Ijp7fSwicmVxdWlyZSI6e319LCJzdGF0ZU5hbWVzIjpbInJlcXVpcmUiLCJtb2RpZnkiLCJpbml0IiwiZGVmYXVsdCIsImlnbm9yZSJdfSwiZW1pdHRlciI6eyJkb21haW4iOm51bGwsIl9ldmVudHMiOnt9LCJfZXZlbnRzQ291bnQiOjAsIl9tYXhMaXN0ZW5lcnMiOjB9fSwiaXNOZXciOmZhbHNlLCJfZG9jIjp7ImFkZHJlc3MiOnsiY291bnRyeSI6IlBlcnUiLCJ6aXAiOjQ1NzY0NSwic3RhdGUiOiJMaW1hIiwiY2l0eSI6IkxpbWEiLCJzdHJlZXQiOiJDYWxsZSBBbGFtZWRhIFNhbnRvcyAzNDQgRHB0byAzMDQifSwibWVkaWNhbENlbnRlcnMiOnsicmVxdWVzdGVkX2F0IjoiMjAxNi0xMi0xNVQwMTo1Mzo0Mi4xMzJaIiwiYWNjZXB0ZWRfYXQiOiIyMDE2LTExLTIwVDA0OjE5OjEzLjAwMFoiLCJzdGF0dXNfcmVxdWVzdCI6IjEiLCJuYW1lIjoiTHVpcyBNYW51ZWwiLCJfaWQiOiIzNDU2Nzg5MDQ1NjU4NDhmcjVnciJ9LCJfX3YiOjAsIm5hbWVzIjoiSG9ydGVuY2lhIiwiZ2VuZGVyIjoiNCIsImlkX0RvY3VtZW50X3R5cGUiOiJETkkiLCJpZF9Eb2N1bWVudF9udW0iOjEyMzQ1Njc4LCJiaXJ0aCI6IjIwMTYtMTEtMjBUMDQ6MTk6MTMuMDAwWiIsImVtYWlsIjoibWFudWVsQGdtYWlsLmNvbSIsInBob25lIjoiMjM0IDU0IDEzIiwiY2VsbHBob25lIjoiOTk5IDk5OSA5OTkiLCJudW1fY3RtcCI6NjU0MiwibnVtX25kdGEiOjU0NTM0NTQzLCJpc19hY3RpdmUiOmZhbHNlLCJ1c2VybmFtZSI6InRlcmFwZXV0YSIsInBhc3N3b3JkIjoiYWRtaW4iLCJfaWQiOiI1ODUxZjYwMTczZGMxMTA3MmEwYTFhOTIifSwiX3ByZXMiOnsiJF9fb3JpZ2luYWxfc2F2ZSI6W251bGwsbnVsbF0sIiRfX29yaWdpbmFsX3ZhbGlkYXRlIjpbbnVsbF0sIiRfX29yaWdpbmFsX3JlbW92ZSI6W251bGxdfSwiX3Bvc3RzIjp7IiRfX29yaWdpbmFsX3NhdmUiOltdLCIkX19vcmlnaW5hbF92YWxpZGF0ZSI6W10sIiRfX29yaWdpbmFsX3JlbW92ZSI6W119LCJpYXQiOjE0ODE3NjY4MjJ9.xDNN-rILCYc5vqVJzpLn3DIqOqMMPTEBuYHgvISoHPw');
-    header = [contentType token];
-
-    input = struct('kinematics_analysis_id','58327f939d4fe93d29435260');
-    paramsInput = struct('params', input);
+    data = '{"frontal_ank_ang":[[0,36.6239548],[25,36.4931221],[50,37.341877],[75,36.720871],[100,37.5084839]],"frontal_hip_ang":[[0,-15.1074829],[25,-18.0453186],[50,-19.9585114],[75,-18.5435333],[100,-17.369957]],"frontal_kne_ang":[[0,11.1828613],[25,11.6198273],[50,11.7042236],[75,12.1821899],[100,12.5167847]],"frontal_pel_ang":[[0,32.3737335],[25,34.7032623],[50,35.633728],[75,33.6650696],[100,32.0141296]],"lank_x":[-0.196061328,-0.203023106,-0.218700916,-0.225095689,-0.231692597],"lank_y":[-0.420783848,-0.42057389,-0.421292871,-0.42000255,-0.419347942],"lank_z":[2.17449808,2.16681194,2.16470051,2.15764642,2.15254688],"lbwt_x":[-0.393105537,-0.396787971,-0.396567762,-0.396149278,-0.396363825],"lbwt_y":[0.5032323,0.505407453,0.504468918,0.503683329,0.503267586],"lbwt_z":[2.09581971,2.10831928,2.10714889,2.1042223,2.10406065],"lfwt_x":[-0.452916354,-0.453837514,-0.452574,-0.4539482,-0.455589712],"lfwt_y":[0.465313643,0.465899676,0.464322478,0.465187132,0.466238827],"lfwt_z":[2.06577969,2.06500983,2.05494,2.05894017,2.06281328],"lhee_x":[-0.309819102,-0.317615777,-0.332148224,-0.337794483,-0.346177489],"lhee_y":[-0.284540892,-0.285112321,-0.285361111,-0.284648478,-0.2865206],"lhee_z":[2.03655028,2.03527379,2.03279686,2.02381492,2.02748036],"lkne_x":[-0.449661583,-0.454836875,-0.461455703,-0.466332018,-0.471145421],"lkne_y":[0.0472802892,0.0475298762,0.0474403,0.0473098457,0.0473588556],"lkne_z":[2.07491016,2.07238793,2.05870271,2.059623,2.05925727],"lteo_x":[-0.363877326,-0.372853577,-0.38802281,-0.396190941,-0.401162326],"lteo_y":[-0.400856256,-0.402344018,-0.403678596,-0.404509485,-0.40268153],"lteo_z,":[2.09296727,2.09668612,2.09081817,2.08942771,2.07546449],"ltrc_x":[-0.587236404,-0.587881267,-0.586992264,-0.587410867,-0.58835113],"ltrc_y":[0.489899963,0.49217546,0.494793296,0.495378137,0.495900422],"ltrc_z":[2.08689213,2.08598948,2.08208537,2.08216238,2.08255839],"sagittal_ank_ang":[[0,36.6239548],[25,36.4931221],[50,37.341877],[75,36.720871],[100,37.5084839]],"sagittal_hip_ang":[[0,-15.1074829],[25,-18.0453186],[50,-19.9585114],[75,-18.5435333],[100,-17.369957]],"sagittal_kne_ang":[[0,11.1828613],[25,11.6198273],[50,11.7042236],[75,12.1821899],[100,12.5167847]],"sagittal_pel_ang":[[0,32.3737335],[25,34.7032623],[50,35.633728],[75,33.6650696],[100,32.0141296]],"transversal_ank_ang":[[0,36.6239548],[25,36.4931221],[50,37.341877],[75,36.720871],[100,37.5084839]],"transversal_hip_ang":[[0,-15.1074829],[25,-18.0453186],[50,-19.9585114],[75,-18.5435333],[100,-17.369957]],"transversal_kne_ang":[[0,11.1828613],[25,11.6198273],[50,11.7042236],[75,12.1821899],[100,12.5167847]],"transversal_pel_ang":[[0,32.3737335],[25,34.7032623],[50,35.633728],[75,33.6650696],[100,32.0141296]]}';
+    data = matlab.net.http.HeaderField('data',data);
+    header = [contentType token data];
     
-    % add cotitaion marks
-    json = '{"lank_x":-0.196061328,"lank_y":-0.420783848,"lank_z":2.17449808,"lbwt_x":-0.393105537,"lbwt_y":0.5032323,"lbwt_z":2.09581971,"lfwt_x":-0.452916354,"lfwt_y":0.465313643,"lfwt_z":2.06577969,"lhee_x":-0.309819102,"lhee_y":-0.284540892,"lhee_z":2.03655028,"lkne_x":-0.449661583,"lkne_y":0.0472802892,"lkne_z":2.07491016,"lteo_x":-0.363877326,"lteo_y":-0.400856256,"lteo_z":2.09296727,"ltrc_x":-0.587236404,"ltrc_y":0.489899963,"ltrc_z":2.08689213}';
-
-    paramsInput = jsonencode(paramsInput);
-    
-    body = {json, paramsInput};
-    body = matlab.net.http.MessageBody(body);
-    disp(body)
-
-% From express server access  to:
-    % req.body.lbwt_y; = req.body.data.lbwt_y;
-    % req.params.kinematics_analysis_id, = req.body.data.params.kinematics_analysis_id;
-
-    request = matlab.net.http.RequestMessage(method,header,body);
-
-    uri = matlab.net.URI('http://52.89.123.49:8080/api/kinematics_analysis_matlab/58327f939d4fe93d29435260');
-    response = send(request,uri);
-    show(response)
-end
-
-function res = cookRawData_MarkerPostions(DATA)
-
-    data = jsondecode(DATA);
-   
-    obj = data(1,1);
-    res  = ...
-        jsonencode( ...
-            containers.Map( ...
-                { 
-                    'lbwt_x','lbwt_y','lbwt_z', ...
-                    'lfwt_x','lfwt_y','lfwt_z', ...
-                    'ltrc_x','ltrc_y','ltrc_z', ...
-                    'lkne_x','lkne_y','lkne_z', ...
-                    'lank_x','lank_y','lank_z', ...
-                    'lhee_x','lhee_y','lhee_z', ...
-                    'lteo_x','lteo_y','lteo_z,' ...
-                }, ...
-                {
-                    obj.lbwt_x,obj.lbwt_y,obj.lbwt_z, ...
-                    obj.lfwt_x,obj.lfwt_y,obj.lfwt_z, ...
-                    obj.ltrc_x,obj.ltrc_y,obj.ltrc_z, ...
-                    obj.lkne_x,obj.lkne_y,obj.lkne_z, ...
-                    obj.lank_x,obj.lank_y,obj.lank_z, ...
-                    obj.lhee_x,obj.lhee_y,obj.lhee_z, ...
-                    obj.lteo_x,obj.lteo_y,obj.lteo_z, ...
-                } ...
-            ) ...
-        )
+    request=matlab.net.http.RequestMessage('put',header,matlab.net.http.MessageBody('useless'))
+    response=request.send( uri)
 
 end
 
+%% Methods for cooking data to create a json which will be send to gaitcome.con server
 function  res = cookKinematicData(LIST_ANGLES,LIST_RAW_POINTS)
 
     lstResAngles = createGaitCycleInPercentageObj(LIST_ANGLES);
@@ -1632,6 +1500,37 @@ function  res = cookKinematicData(LIST_ANGLES,LIST_RAW_POINTS)
         );
 
 end
+function res = cookRawData_MarkerPostions(DATA)
+
+    data = jsondecode(DATA);
+   
+    obj = data(1,1);
+    res  = ...
+        jsonencode( ...
+            containers.Map( ...
+                { 
+                    'lbwt_x','lbwt_y','lbwt_z', ...
+                    'lfwt_x','lfwt_y','lfwt_z', ...
+                    'ltrc_x','ltrc_y','ltrc_z', ...
+                    'lkne_x','lkne_y','lkne_z', ...
+                    'lank_x','lank_y','lank_z', ...
+                    'lhee_x','lhee_y','lhee_z', ...
+                    'lteo_x','lteo_y','lteo_z,' ...
+                }, ...
+                {
+                    obj.lbwt_x,obj.lbwt_y,obj.lbwt_z, ...
+                    obj.lfwt_x,obj.lfwt_y,obj.lfwt_z, ...
+                    obj.ltrc_x,obj.ltrc_y,obj.ltrc_z, ...
+                    obj.lkne_x,obj.lkne_y,obj.lkne_z, ...
+                    obj.lank_x,obj.lank_y,obj.lank_z, ...
+                    obj.lhee_x,obj.lhee_y,obj.lhee_z, ...
+                    obj.lteo_x,obj.lteo_y,obj.lteo_z, ...
+                } ...
+            ) ...
+        )
+
+end
+
 function  res = cookAnglesWithPercentageProgress(LIST_ANGLES)
 
     lstResAngles = createGaitCycleInPercentageObj(LIST_ANGLES);
@@ -1702,25 +1601,18 @@ function res = getHighChartsAngleObject_DATA(LIST)
 
 end
 
-% data = '{"lank_x":-0.196061328,"lank_y":-0.420783848,"lank_z":2.17449808,"lbwt_x":-0.393105537,"lbwt_y":0.5032323,"lbwt_z":2.09581971,"lfwt_x":-0.452916354,"lfwt_y":0.465313643,"lfwt_z":2.06577969,"lhee_x":-0.309819102,"lhee_y":-0.284540892,"lhee_z":2.03655028,"lkne_x":-0.449661583,"lkne_y":0.0472802892,"lkne_z":2.07491016,"lteo_x":-0.363877326,"lteo_y":-0.400856256,"lteo_z":2.09296727,"ltrc_x":-0.587236404,"ltrc_y":0.489899963,"ltrc_z":2.08689213}';
 
-% method = matlab.net.http.RequestMethod.PUT;
+function testPUTPUT(DATA) %OK It sends throug oniline matlab, since from here has a wierd problem
 
-% contentType = matlab.net.http.HeaderField('ContentType','application/json');
-% token       = matlab.net.http.HeaderField('x-access-token','eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyIkX18iOnsic3RyaWN0TW9kZSI6dHJ1ZSwiZ2V0dGVycyI6e30sIndhc1BvcHVsYXRlZCI6ZmFsc2UsImFjdGl2ZVBhdGhzIjp7InBhdGhzIjp7Im1lZGljYWxDZW50ZXJzLnJlcXVlc3RlZF9hdCI6ImRlZmF1bHQiLCJfX3YiOiJpbml0IiwiYWRkcmVzcy5jb3VudHJ5IjoiaW5pdCIsImFkZHJlc3MuemlwIjoiaW5pdCIsImFkZHJlc3Muc3RhdGUiOiJpbml0IiwiYWRkcmVzcy5jaXR5IjoiaW5pdCIsImFkZHJlc3Muc3RyZWV0IjoiaW5pdCIsIm1lZGljYWxDZW50ZXJzLmFjY2VwdGVkX2F0IjoiaW5pdCIsIm1lZGljYWxDZW50ZXJzLnN0YXR1c19yZXF1ZXN0IjoiaW5pdCIsIm1lZGljYWxDZW50ZXJzLm5hbWUiOiJpbml0IiwibWVkaWNhbENlbnRlcnMuX2lkIjoiaW5pdCIsIm5hbWVzIjoiaW5pdCIsImdlbmRlciI6ImluaXQiLCJpZF9Eb2N1bWVudF90eXBlIjoiaW5pdCIsImlkX0RvY3VtZW50X251bSI6ImluaXQiLCJiaXJ0aCI6ImluaXQiLCJlbWFpbCI6ImluaXQiLCJwaG9uZSI6ImluaXQiLCJjZWxscGhvbmUiOiJpbml0IiwibnVtX2N0bXAiOiJpbml0IiwibnVtX25kdGEiOiJpbml0IiwiaXNfYWN0aXZlIjoiaW5pdCIsInVzZXJuYW1lIjoiaW5pdCIsInBhc3N3b3JkIjoiaW5pdCIsIl9pZCI6ImluaXQifSwic3RhdGVzIjp7Imlnbm9yZSI6e30sImRlZmF1bHQiOnsibWVkaWNhbENlbnRlcnMucmVxdWVzdGVkX2F0Ijp0cnVlfSwiaW5pdCI6eyJfX3YiOnRydWUsImFkZHJlc3MuY291bnRyeSI6dHJ1ZSwiYWRkcmVzcy56aXAiOnRydWUsImFkZHJlc3Muc3RhdGUiOnRydWUsImFkZHJlc3MuY2l0eSI6dHJ1ZSwiYWRkcmVzcy5zdHJlZXQiOnRydWUsIm1lZGljYWxDZW50ZXJzLmFjY2VwdGVkX2F0Ijp0cnVlLCJtZWRpY2FsQ2VudGVycy5zdGF0dXNfcmVxdWVzdCI6dHJ1ZSwibWVkaWNhbENlbnRlcnMubmFtZSI6dHJ1ZSwibWVkaWNhbENlbnRlcnMuX2lkIjp0cnVlLCJuYW1lcyI6dHJ1ZSwiZ2VuZGVyIjp0cnVlLCJpZF9Eb2N1bWVudF90eXBlIjp0cnVlLCJpZF9Eb2N1bWVudF9udW0iOnRydWUsImJpcnRoIjp0cnVlLCJlbWFpbCI6dHJ1ZSwicGhvbmUiOnRydWUsImNlbGxwaG9uZSI6dHJ1ZSwibnVtX2N0bXAiOnRydWUsIm51bV9uZHRhIjp0cnVlLCJpc19hY3RpdmUiOnRydWUsInVzZXJuYW1lIjp0cnVlLCJwYXNzd29yZCI6dHJ1ZSwiX2lkIjp0cnVlfSwibW9kaWZ5Ijp7fSwicmVxdWlyZSI6e319LCJzdGF0ZU5hbWVzIjpbInJlcXVpcmUiLCJtb2RpZnkiLCJpbml0IiwiZGVmYXVsdCIsImlnbm9yZSJdfSwiZW1pdHRlciI6eyJkb21haW4iOm51bGwsIl9ldmVudHMiOnt9LCJfZXZlbnRzQ291bnQiOjAsIl9tYXhMaXN0ZW5lcnMiOjB9fSwiaXNOZXciOmZhbHNlLCJfZG9jIjp7ImFkZHJlc3MiOnsiY291bnRyeSI6IlBlcnUiLCJ6aXAiOjQ1NzY0NSwic3RhdGUiOiJMaW1hIiwiY2l0eSI6IkxpbWEiLCJzdHJlZXQiOiJDYWxsZSBBbGFtZWRhIFNhbnRvcyAzNDQgRHB0byAzMDQifSwibWVkaWNhbENlbnRlcnMiOnsicmVxdWVzdGVkX2F0IjoiMjAxNi0xMi0xNVQwMTo1Mzo0Mi4xMzJaIiwiYWNjZXB0ZWRfYXQiOiIyMDE2LTExLTIwVDA0OjE5OjEzLjAwMFoiLCJzdGF0dXNfcmVxdWVzdCI6IjEiLCJuYW1lIjoiTHVpcyBNYW51ZWwiLCJfaWQiOiIzNDU2Nzg5MDQ1NjU4NDhmcjVnciJ9LCJfX3YiOjAsIm5hbWVzIjoiSG9ydGVuY2lhIiwiZ2VuZGVyIjoiNCIsImlkX0RvY3VtZW50X3R5cGUiOiJETkkiLCJpZF9Eb2N1bWVudF9udW0iOjEyMzQ1Njc4LCJiaXJ0aCI6IjIwMTYtMTEtMjBUMDQ6MTk6MTMuMDAwWiIsImVtYWlsIjoibWFudWVsQGdtYWlsLmNvbSIsInBob25lIjoiMjM0IDU0IDEzIiwiY2VsbHBob25lIjoiOTk5IDk5OSA5OTkiLCJudW1fY3RtcCI6NjU0MiwibnVtX25kdGEiOjU0NTM0NTQzLCJpc19hY3RpdmUiOmZhbHNlLCJ1c2VybmFtZSI6InRlcmFwZXV0YSIsInBhc3N3b3JkIjoiYWRtaW4iLCJfaWQiOiI1ODUxZjYwMTczZGMxMTA3MmEwYTFhOTIifSwiX3ByZXMiOnsiJF9fb3JpZ2luYWxfc2F2ZSI6W251bGwsbnVsbF0sIiRfX29yaWdpbmFsX3ZhbGlkYXRlIjpbbnVsbF0sIiRfX29yaWdpbmFsX3JlbW92ZSI6W251bGxdfSwiX3Bvc3RzIjp7IiRfX29yaWdpbmFsX3NhdmUiOltdLCIkX19vcmlnaW5hbF92YWxpZGF0ZSI6W10sIiRfX29yaWdpbmFsX3JlbW92ZSI6W119LCJpYXQiOjE0ODE3NjY4MjJ9.xDNN-rILCYc5vqVJzpLn3DIqOqMMPTEBuYHgvISoHPw');
-% header = [contentType token];
+    uri = matlab.net.URI('http://52.89.123.49:8080/api/kinematics_analysis_matlab/58327fa19d4fe93d29435261');
 
+    contentType = matlab.net.http.HeaderField('ContentType','application/json');
+    token       = matlab.net.http.HeaderField('x-access-token','eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyIkX18iOnsic3RyaWN0TW9kZSI6dHJ1ZSwiZ2V0dGVycyI6e30sIndhc1BvcHVsYXRlZCI6ZmFsc2UsImFjdGl2ZVBhdGhzIjp7InBhdGhzIjp7Im1lZGljYWxDZW50ZXJzLnJlcXVlc3RlZF9hdCI6ImRlZmF1bHQiLCJfX3YiOiJpbml0IiwiYWRkcmVzcy5jb3VudHJ5IjoiaW5pdCIsImFkZHJlc3MuemlwIjoiaW5pdCIsImFkZHJlc3Muc3RhdGUiOiJpbml0IiwiYWRkcmVzcy5jaXR5IjoiaW5pdCIsImFkZHJlc3Muc3RyZWV0IjoiaW5pdCIsIm1lZGljYWxDZW50ZXJzLmFjY2VwdGVkX2F0IjoiaW5pdCIsIm1lZGljYWxDZW50ZXJzLnN0YXR1c19yZXF1ZXN0IjoiaW5pdCIsIm1lZGljYWxDZW50ZXJzLm5hbWUiOiJpbml0IiwibWVkaWNhbENlbnRlcnMuX2lkIjoiaW5pdCIsIm5hbWVzIjoiaW5pdCIsImdlbmRlciI6ImluaXQiLCJpZF9Eb2N1bWVudF90eXBlIjoiaW5pdCIsImlkX0RvY3VtZW50X251bSI6ImluaXQiLCJiaXJ0aCI6ImluaXQiLCJlbWFpbCI6ImluaXQiLCJwaG9uZSI6ImluaXQiLCJjZWxscGhvbmUiOiJpbml0IiwibnVtX2N0bXAiOiJpbml0IiwibnVtX25kdGEiOiJpbml0IiwiaXNfYWN0aXZlIjoiaW5pdCIsInVzZXJuYW1lIjoiaW5pdCIsInBhc3N3b3JkIjoiaW5pdCIsIl9pZCI6ImluaXQifSwic3RhdGVzIjp7Imlnbm9yZSI6e30sImRlZmF1bHQiOnsibWVkaWNhbENlbnRlcnMucmVxdWVzdGVkX2F0Ijp0cnVlfSwiaW5pdCI6eyJfX3YiOnRydWUsImFkZHJlc3MuY291bnRyeSI6dHJ1ZSwiYWRkcmVzcy56aXAiOnRydWUsImFkZHJlc3Muc3RhdGUiOnRydWUsImFkZHJlc3MuY2l0eSI6dHJ1ZSwiYWRkcmVzcy5zdHJlZXQiOnRydWUsIm1lZGljYWxDZW50ZXJzLmFjY2VwdGVkX2F0Ijp0cnVlLCJtZWRpY2FsQ2VudGVycy5zdGF0dXNfcmVxdWVzdCI6dHJ1ZSwibWVkaWNhbENlbnRlcnMubmFtZSI6dHJ1ZSwibWVkaWNhbENlbnRlcnMuX2lkIjp0cnVlLCJuYW1lcyI6dHJ1ZSwiZ2VuZGVyIjp0cnVlLCJpZF9Eb2N1bWVudF90eXBlIjp0cnVlLCJpZF9Eb2N1bWVudF9udW0iOnRydWUsImJpcnRoIjp0cnVlLCJlbWFpbCI6dHJ1ZSwicGhvbmUiOnRydWUsImNlbGxwaG9uZSI6dHJ1ZSwibnVtX2N0bXAiOnRydWUsIm51bV9uZHRhIjp0cnVlLCJpc19hY3RpdmUiOnRydWUsInVzZXJuYW1lIjp0cnVlLCJwYXNzd29yZCI6dHJ1ZSwiX2lkIjp0cnVlfSwibW9kaWZ5Ijp7fSwicmVxdWlyZSI6e319LCJzdGF0ZU5hbWVzIjpbInJlcXVpcmUiLCJtb2RpZnkiLCJpbml0IiwiZGVmYXVsdCIsImlnbm9yZSJdfSwiZW1pdHRlciI6eyJkb21haW4iOm51bGwsIl9ldmVudHMiOnt9LCJfZXZlbnRzQ291bnQiOjAsIl9tYXhMaXN0ZW5lcnMiOjB9fSwiaXNOZXciOmZhbHNlLCJfZG9jIjp7ImFkZHJlc3MiOnsiY291bnRyeSI6IlBlcnUiLCJ6aXAiOjQ1NzY0NSwic3RhdGUiOiJMaW1hIiwiY2l0eSI6IkxpbWEiLCJzdHJlZXQiOiJDYWxsZSBBbGFtZWRhIFNhbnRvcyAzNDQgRHB0byAzMDQifSwibWVkaWNhbENlbnRlcnMiOnsicmVxdWVzdGVkX2F0IjoiMjAxNi0xMi0xNVQwMTo1Mzo0Mi4xMzJaIiwiYWNjZXB0ZWRfYXQiOiIyMDE2LTExLTIwVDA0OjE5OjEzLjAwMFoiLCJzdGF0dXNfcmVxdWVzdCI6IjEiLCJuYW1lIjoiTHVpcyBNYW51ZWwiLCJfaWQiOiIzNDU2Nzg5MDQ1NjU4NDhmcjVnciJ9LCJfX3YiOjAsIm5hbWVzIjoiSG9ydGVuY2lhIiwiZ2VuZGVyIjoiNCIsImlkX0RvY3VtZW50X3R5cGUiOiJETkkiLCJpZF9Eb2N1bWVudF9udW0iOjEyMzQ1Njc4LCJiaXJ0aCI6IjIwMTYtMTEtMjBUMDQ6MTk6MTMuMDAwWiIsImVtYWlsIjoibWFudWVsQGdtYWlsLmNvbSIsInBob25lIjoiMjM0IDU0IDEzIiwiY2VsbHBob25lIjoiOTk5IDk5OSA5OTkiLCJudW1fY3RtcCI6NjU0MiwibnVtX25kdGEiOjU0NTM0NTQzLCJpc19hY3RpdmUiOmZhbHNlLCJ1c2VybmFtZSI6InRlcmFwZXV0YSIsInBhc3N3b3JkIjoiYWRtaW4iLCJfaWQiOiI1ODUxZjYwMTczZGMxMTA3MmEwYTFhOTIifSwiX3ByZXMiOnsiJF9fb3JpZ2luYWxfc2F2ZSI6W251bGwsbnVsbF0sIiRfX29yaWdpbmFsX3ZhbGlkYXRlIjpbbnVsbF0sIiRfX29yaWdpbmFsX3JlbW92ZSI6W251bGxdfSwiX3Bvc3RzIjp7IiRfX29yaWdpbmFsX3NhdmUiOltdLCIkX19vcmlnaW5hbF92YWxpZGF0ZSI6W10sIiRfX29yaWdpbmFsX3JlbW92ZSI6W119LCJpYXQiOjE0ODE3NjY4MjJ9.xDNN-rILCYc5vqVJzpLn3DIqOqMMPTEBuYHgvISoHPw');
+    data = '{"frontal_ank_ang":[[0,36.6239548],[25,36.4931221],[50,37.341877],[75,36.720871],[100,37.5084839]],"frontal_hip_ang":[[0,-15.1074829],[25,-18.0453186],[50,-19.9585114],[75,-18.5435333],[100,-17.369957]],"frontal_kne_ang":[[0,11.1828613],[25,11.6198273],[50,11.7042236],[75,12.1821899],[100,12.5167847]],"frontal_pel_ang":[[0,32.3737335],[25,34.7032623],[50,35.633728],[75,33.6650696],[100,32.0141296]],"lank_x":[-0.196061328,-0.203023106,-0.218700916,-0.225095689,-0.231692597],"lank_y":[-0.420783848,-0.42057389,-0.421292871,-0.42000255,-0.419347942],"lank_z":[2.17449808,2.16681194,2.16470051,2.15764642,2.15254688],"lbwt_x":[-0.393105537,-0.396787971,-0.396567762,-0.396149278,-0.396363825],"lbwt_y":[0.5032323,0.505407453,0.504468918,0.503683329,0.503267586],"lbwt_z":[2.09581971,2.10831928,2.10714889,2.1042223,2.10406065],"lfwt_x":[-0.452916354,-0.453837514,-0.452574,-0.4539482,-0.455589712],"lfwt_y":[0.465313643,0.465899676,0.464322478,0.465187132,0.466238827],"lfwt_z":[2.06577969,2.06500983,2.05494,2.05894017,2.06281328],"lhee_x":[-0.309819102,-0.317615777,-0.332148224,-0.337794483,-0.346177489],"lhee_y":[-0.284540892,-0.285112321,-0.285361111,-0.284648478,-0.2865206],"lhee_z":[2.03655028,2.03527379,2.03279686,2.02381492,2.02748036],"lkne_x":[-0.449661583,-0.454836875,-0.461455703,-0.466332018,-0.471145421],"lkne_y":[0.0472802892,0.0475298762,0.0474403,0.0473098457,0.0473588556],"lkne_z":[2.07491016,2.07238793,2.05870271,2.059623,2.05925727],"lteo_x":[-0.363877326,-0.372853577,-0.38802281,-0.396190941,-0.401162326],"lteo_y":[-0.400856256,-0.402344018,-0.403678596,-0.404509485,-0.40268153],"lteo_z,":[2.09296727,2.09668612,2.09081817,2.08942771,2.07546449],"ltrc_x":[-0.587236404,-0.587881267,-0.586992264,-0.587410867,-0.58835113],"ltrc_y":[0.489899963,0.49217546,0.494793296,0.495378137,0.495900422],"ltrc_z":[2.08689213,2.08598948,2.08208537,2.08216238,2.08255839],"sagittal_ank_ang":[[0,36.6239548],[25,36.4931221],[50,37.341877],[75,36.720871],[100,37.5084839]],"sagittal_hip_ang":[[0,-15.1074829],[25,-18.0453186],[50,-19.9585114],[75,-18.5435333],[100,-17.369957]],"sagittal_kne_ang":[[0,11.1828613],[25,11.6198273],[50,11.7042236],[75,12.1821899],[100,12.5167847]],"sagittal_pel_ang":[[0,32.3737335],[25,34.7032623],[50,35.633728],[75,33.6650696],[100,32.0141296]],"transversal_ank_ang":[[0,36.6239548],[25,36.4931221],[50,37.341877],[75,36.720871],[100,37.5084839]],"transversal_hip_ang":[[0,-15.1074829],[25,-18.0453186],[50,-19.9585114],[75,-18.5435333],[100,-17.369957]],"transversal_kne_ang":[[0,11.1828613],[25,11.6198273],[50,11.7042236],[75,12.1821899],[100,12.5167847]],"transversal_pel_ang":[[0,32.3737335],[25,34.7032623],[50,35.633728],[75,33.6650696],[100,32.0141296]]}';
+    data = matlab.net.http.HeaderField('data',data);
+    header = [contentType token data];
+    
+    request=matlab.net.http.RequestMessage('put',header,matlab.net.http.MessageBody('useless'))
+    response=request.send( uri)
 
-% input = struct('name','kevin','namree','kevinfds');
-% paramsInput = struct('params', input);
-% paramsInput = jsonencode(paramsInput);
-
-% body = matlab.net.http.MessageBody(paramsInput);
-
-% request = matlab.net.http.RequestMessage(method,header,body);
-% show(request)
-
-% uri = matlab.net.URI('http://52.89.123.49:8080/api/kinematics_analysis_matlab/58327f939d4fe93d29435260');
-% response = send(request,uri);
-% show(response)
-
+end
