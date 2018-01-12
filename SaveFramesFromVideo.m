@@ -7,21 +7,26 @@ clear all;
 % readfilename = {'./visionData/videoCalibration/camera_a/FHD0398.MOV', ... % camera A          
 %             './visionData/videoCalibration/camera_b/FHD0384.MOV'};    % camera B
         
-readfilename = {'../ekenRawFiles/camera_a/test_10_video/FHD0600.MOV', ... % camera A          
-                '../ekenRawFiles/camera_b/test_10_video/FHD0593.MOV'};    % camera B
+readfilename = {'../ekenRawFiles/camera_a/test_12_video/FHD0646.MOV', ... % camera A          
+                '../ekenRawFiles/camera_b/test_12_video/FHD0639.MOV'};    % camera B
                 
 
-savefilename = {'/visionData/videoCalibration/camera_a/snap_test_10', ... % camera A          
-                '/visionData/videoCalibration/camera_b/snap_test_10'};    % camera B
+savefilename = {'/visionData/videoCalibration/camera_a/snap_test_12', ... % camera A          
+                '/visionData/videoCalibration/camera_b/snap_test_12'};    % camera B
 
 sec_ini = 1;
-sec_end= 323;
+sec_end= 3;
 
-jumpBtwnFrames = 120;            
+jumpBtwnFrames = 1;            
 fps = 120; 
 
 for i = 1:2 
-    extractFramesFromVideo(readfilename{i}, savefilename{i},jumpBtwnFrames,sec_ini,sec_end,fps);
+    extractFramesFromVideo( readfilename{i}, ...
+                            savefilename{i}, ...
+                            jumpBtwnFrames, ...
+                            sec_ini, ...
+                            sec_end, ...
+                            fps);
 end
 
 function data = extractFramesFromVideo (FILE_NAME,SAVE_FILENAME,FRAME_JUMPS, SEC_INI, SEC_END, FPS)
