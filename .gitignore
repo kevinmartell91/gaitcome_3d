@@ -4,6 +4,9 @@ visionData/videoCalibration/camera_b/**
 visionData/videoCalibration/*.mat
 visionData/removeBackground/**
 visionData/planeVideos/**
+visionData/compImg/**
+
+compareSync.txt
 
 #System Files
 .DS_Store
