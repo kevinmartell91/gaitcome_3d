@@ -7,15 +7,15 @@ clear all;
 % readfilename = {'./visionData/videoCalibration/camera_a/FHD0398.MOV', ... % camera A          
 %             './visionData/videoCalibration/camera_b/FHD0384.MOV'};    % camera B
         
-readfilename = {'../ekenRawFiles/camera_a/test_12_video/FHD0646.MOV', ... % camera A          
-                '../ekenRawFiles/camera_b/test_12_video/FHD0639.MOV'};    % camera B
+readfilename = {'../ekenRawFiles/camera_a/test_12_video/FHD0657.MOV', ... % camera A          
+                '../ekenRawFiles/camera_b/test_12_video/FHD0650.MOV'};    % camera B
                 
 
-savefilename = {'/visionData/videoCalibration/camera_a/snap_test_12', ... % camera A          
-                '/visionData/videoCalibration/camera_b/snap_test_12'};    % camera B
+savefilename = {'/visionData/videoCalibration/camera_a/snap_test_12_backgroundImg', ... % camera A          
+                '/visionData/videoCalibration/camera_b/snap_test_12_backgroundImg'};    % camera B
 
-sec_ini = 1;
-sec_end= 3;
+sec_ini = 10;
+sec_end= 14;
 
 jumpBtwnFrames = 1;            
 fps = 120; 
