@@ -5,7 +5,7 @@ visionData/videoCalibration/*.mat
 visionData/removeBackground/**
 visionData/planeVideos/**
 visionData/compImg/**
-
+Ilustrative anatomical images/**
 compareSync.txt
 
 #System Files
