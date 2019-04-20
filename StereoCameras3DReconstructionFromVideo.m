@@ -27,12 +27,12 @@ clear all;
 
 
 %% Static values
-TYPE_DATA_INPUT = 1;        % 1-Eken(video) || 2-ps3(images)
+TYPE_DATA_INPUT = 2;        % 1-Eken(video) || 2-ps3(images)
 TYPE_IMG_PROC = 1;          % 1-Img Proc each frame  or 2-background 
                             % substraction
-N_MARKERS = 7;              % dynamic number markers
+N_MARKERS = 3;              % dynamic number markers
 NUM_MARKERS = N_MARKERS;    % (N marker), (7 marker) or (9 marker) values
-OSCILATION = 0;             % 0 (OFF ) , 1(ON) | It show osilation graphs
+OSCILATION = true;          % (OFF - ON) | It show osilation graphs
 
 % TYPE_IMG_PROC = 2
 BINARY_THRES_A = 0.8;
@@ -44,8 +44,8 @@ MIN_AREA = 2;
 MAX_AREA = 60;
 
 THRESH_L = 230;
-THRESH_R = 238;
-SURGE_MEAN_AREA = 0.48;      % multiplier to filter blob sizes detected
+THRESH_R = 230 +10 ;
+SURGE_MEAN_AREA = 1;      % multiplier to filter blob sizes detected
 
 % Limits
 MARGIN = 0;
@@ -56,8 +56,8 @@ RIG_LIM = 1280 - MARGIN;
 
 % Out of Phase frames
 isSync = true;
-outOfPhase_l =493;             % number of out of phase left frames
-outOfPhase_r = 488;             % number of out of phase right frames
+outOfPhase_l =0;             % number of out of phase left frames
+outOfPhase_r = 0;             % number of out of phase right frames
 isBlinking_l = false;
 isBlinking_r = false;
 SYNC_UMBRAL = 230;
@@ -170,11 +170,16 @@ player_right = vision.DeployableVideoPlayer( ...
 
 
 % Oscilation - live data
-if OSCILATION == 1
-    
-    [HX PX] = InitPlotOscilation(-0.3, 0.5,'X - Oscilation');
-    [HY PY] = InitPlotOscilation(-0.1, 0.09,'Y - Oscilation');
-    [HZ PZ] = InitPlotOscilation(2.9, 3.1,'Z - Oscilation');
+if OSCILATION
+    % uncomment to easily notice the osicilitaion in x,y and coordinates
+    [HX PX] = InitPlotOscilation(-0.05, 0.05,'X - Oscilation');
+    [HY PY] = InitPlotOscilation(-0.05, 0.05,'Y - Oscilation');
+    [HZ PZ] = InitPlotOscilation(0.03, 0.10,'Z - Oscilation');
+%     
+%     [HX PX] = InitPlotOscilation(-30, 50,'X - Oscilation');
+%     [HY PY] = InitPlotOscilation(-40, 30,'Y - Oscilation');
+%     [HZ PZ] = InitPlotOscilation(20, 150,'Z - Oscilation');
+%     
     startTime = datetime('now');
 
 end
@@ -183,33 +188,42 @@ end
 
 
 %% Load cameras stereoParams 
-load('./visionData/videoCalibration/stereoParams_test_12.mat');
-% load './visionData/videoCalibration/stereoParams_test_12';
+load('./visionData/videoCalibration/stereoParams_test_pseye_01.mat');
+% load './visionData/videoCalibration/stereoParams_test_pseye_01';
 
 %% Create a streaming point cloud viewer
-player3D =  pcplayer( ...
-                [-4, 3], [-1,1], [-0.5, 7], 'VerticalAxis', 'y', ...
-                'VerticalAxisDir', 'down', 'MarkerSize', 1300 ...
-            );
+% player3D =  pcplayer( ...
+%                 [-4, 3], [-1,1], [-0.5, 7], 'VerticalAxis', 'y', ...
+%                 'VerticalAxisDir', 'down', 'MarkerSize', 1300 ...
+%             );
+
+% uncomment to easily notice the osicilitaion in x,y and coordinates
+player3D = pcplayer( ...
+    [-0.05, 0.05], [-0.05, 0.05], [0, 0.3], 'VerticalAxis', 'y', ...
+    'VerticalAxisDir', 'down', 'MarkerSize', 1000);
+
+
 % player3D = pcplayer( ...
-%     [-8, 6], [-10,10], [-4.5, 11], 'VerticalAxis', 'y', ...
-%     'VerticalAxisDir', 'down', 'MarkerSize', 2700);
-xlabel(player3D.Axes,'x-axis (m)');
-ylabel(player3D.Axes,'y-axis (m)');
-zlabel(player3D.Axes,'z-axis (m)');
+%     [-30, 50], [-30, 20], [30, 150], 'VerticalAxis', 'y', ...
+%     'VerticalAxisDir', 'down', 'MarkerSize', 12000);
+
+
+xlabel(player3D.Axes,'x-axis (cm)');
+ylabel(player3D.Axes,'y-axis (cm)');
+zlabel(player3D.Axes,'z-axis (cm)');
   
 %% Reconstruct the 3D locations of matched Points	
 % compute camera matrices for each position of the camera	
 camMatrixLeft = ...
     cameraMatrix( ...
-        stereoParams_test_12.CameraParameters1, ...
+        stereoParams_test_pseye_01.CameraParameters1, ...
         eye(3), [0 0 0] ...
     );
 camMatrixRight = ... 
     cameraMatrix( ...
-        stereoParams_test_12.CameraParameters2, ...
-        stereoParams_test_12.RotationOfCamera2, ...
-        stereoParams_test_12.TranslationOfCamera2 ...
+        stereoParams_test_pseye_01.CameraParameters2, ...
+        stereoParams_test_pseye_01.RotationOfCamera2, ...
+        stereoParams_test_pseye_01.TranslationOfCamera2 ...
     );
                              
 % reading both video files
@@ -228,8 +242,8 @@ if TYPE_DATA_INPUT == 1
 
 elseif TYPE_DATA_INPUT == 2
    % getting number of image manualy
-   iteFrames = 0;
-   endFrames = 2900;
+   iteFrames = 0; %kevin
+   endFrames = 769;
 end
 
 % getting the background images from both cameras
@@ -263,7 +277,7 @@ while iteFrames < endFrames
 
             ps3Index = iteFrames;
             % retrieve ps3's frames - no syncing process(test mode)
-            frameLeft  = imread(['../ps3RawFiles/cam0/img' , num2str(ps3Index) , '.jpg']);
+            frameLeft  = imread(['../ps3RawFiles/cam0/img' , num2str(ps3Index +1) , '.jpg']);
             frameRight = imread(['../ps3RawFiles/cam1/img' , num2str(ps3Index) , '.jpg']);  
         end
 %         //
@@ -330,12 +344,12 @@ while iteFrames < endFrames
     frameLeft = ...
         undistortImage( ...
             frameLeft, ...
-            stereoParams_test_12.CameraParameters1 ...
+            stereoParams_test_pseye_01.CameraParameters1 ...
         );
     frameRight = ...
         undistortImage( ...
             frameRight, ...
-            stereoParams_test_12.CameraParameters2 ...
+            stereoParams_test_pseye_01.CameraParameters2 ...
         );
     % show
     % figure
@@ -344,7 +358,7 @@ while iteFrames < endFrames
 
 
     % continue with the process of markers recognition
-    % depending in the type of process 
+    % depending on the type of process 
     if TYPE_IMG_PROC == 1
         
         [frameLeftBinary, markersPosXY_Left] = ...
@@ -466,23 +480,26 @@ while iteFrames < endFrames
                                    camMatrixLeft, camMatrixRight);
 
             % Convert to meters and create a pointCloud object
-            points3D = points3D ./ 1000;
-
-            %% Turn Points3D into an array of dictiories        
-            [lbwt lfwt ltrc lkne lank lhee lteo] = GetArrayDicPoints3D(points3D);
-
-            %% SavePoints3D - cooking data to be used in JsonEncode
-            lbwt_x{idx_raw_data}= lbwt('x'); lbwt_y{idx_raw_data}= lbwt('y'); lbwt_z{idx_raw_data}= lbwt('z');
-            lfwt_x{idx_raw_data}= lfwt('x'); lfwt_y{idx_raw_data}= lfwt('y'); lfwt_z{idx_raw_data}= lfwt('z');
-            ltrc_x{idx_raw_data}= ltrc('x'); ltrc_y{idx_raw_data}= ltrc('y'); ltrc_z{idx_raw_data}= ltrc('z');
-            lkne_x{idx_raw_data}= lkne('x'); lkne_y{idx_raw_data}= lkne('y'); lkne_z{idx_raw_data}= lkne('z');
-            lank_x{idx_raw_data}= lank('x'); lank_y{idx_raw_data}= lank('y'); lank_z{idx_raw_data}= lank('z');
-            lhee_x{idx_raw_data}= lhee('x'); lhee_y{idx_raw_data}= lhee('y'); lhee_z{idx_raw_data}= lhee('z');
-            lteo_x{idx_raw_data}= lteo('x'); lteo_y{idx_raw_data}= lteo('y'); lteo_z{idx_raw_data}= lteo('z');
-
+            % divide by 1000 scale and easily notice the osilation of the markers 
+            points3D = points3D ./1000;
+            
 
             % Calulate angles when there are 7 markers only 
             if NUM_MARKERS == 7
+                
+                %% Turn Points3D into an array of dictiories        
+                [lbwt lfwt ltrc lkne lank lhee lteo] = GetArrayDicPoints3D(points3D);
+
+                %% SavePoints3D - cooking data to be used in JsonEncode
+                lbwt_x{idx_raw_data}= lbwt('x'); lbwt_y{idx_raw_data}= lbwt('y'); lbwt_z{idx_raw_data}= lbwt('z');
+                lfwt_x{idx_raw_data}= lfwt('x'); lfwt_y{idx_raw_data}= lfwt('y'); lfwt_z{idx_raw_data}= lfwt('z');
+                ltrc_x{idx_raw_data}= ltrc('x'); ltrc_y{idx_raw_data}= ltrc('y'); ltrc_z{idx_raw_data}= ltrc('z');
+                lkne_x{idx_raw_data}= lkne('x'); lkne_y{idx_raw_data}= lkne('y'); lkne_z{idx_raw_data}= lkne('z');
+                lank_x{idx_raw_data}= lank('x'); lank_y{idx_raw_data}= lank('y'); lank_z{idx_raw_data}= lank('z');
+                lhee_x{idx_raw_data}= lhee('x'); lhee_y{idx_raw_data}= lhee('y'); lhee_z{idx_raw_data}= lhee('z');
+                lteo_x{idx_raw_data}= lteo('x'); lteo_y{idx_raw_data}= lteo('y'); lteo_z{idx_raw_data}= lteo('z');
+
+
 
                 lstResThreePlanes = jsondecode(GetJsonOfCalculatedAnglesInThreePlanes(points3D));  
 
@@ -563,13 +580,13 @@ while iteFrames < endFrames
             % Visualize the point cloud / Update points
             view(player3D, ptCloud);
 
-            if OSCILATION == 1
+            if OSCILATION
                 % subplot(3,1,1);
-                UpdatePlotOscilation(HX, PX, points3D(1,1), startTime,1);
+                UpdatePlotOscilation(HX, PX, points3D(3,1), startTime,1);
                 % subplot(3,1,2);
-                UpdatePlotOscilation(HY, PY, points3D(1,2), startTime,2);
+                UpdatePlotOscilation(HY, PY, points3D(3,2), startTime,2);
                 % subplot(3,1,3);
-                UpdatePlotOscilation(HZ, PZ, points3D(1,3), startTime,3);
+                UpdatePlotOscilation(HZ, PZ, points3D(3,3), startTime,3);
 
             end
 
@@ -946,7 +963,7 @@ function [markerImage markerPoints] = TestKernels(I1,THRESH_MIN,SURGE_MEAN_AREA,
 
      % BW1_TH = thresh_min < img ; % green channel
     BW1_TH = THRESH_MIN < rgb2gray(I1) ;
-    %     subplot(2,3,3), imshow(BW1_TH), title('thresh_min img');
+%         subplot(2,3,3), imshow(BW1_TH), title('thresh_min img');
         
     %     BW1_TH = im2uint8(BW1_TH);
     %     %Applying kernels
@@ -978,12 +995,26 @@ function [markerImage markerPoints] = TestKernels(I1,THRESH_MIN,SURGE_MEAN_AREA,
     BW1 = bwconncomp(BW1_TH); 
     %     subplot(2,3,5), imshow(BW1), title('bwconncomp');
     
+    ids = [];
     stats = regionprops(BW1, 'Area','Eccentricity'); 
-    mean_area =  mean([stats.Area]);
-    ids = find([stats.Area] > mean_area * SURGE_MEAN_AREA); 
-    % ids = find([stats.Area] > 70); 
-    marker_blobs = ismember(labelmatrix(BW1), ids);
+    if not (size(stats,1) < 4 )
+        mean_area =  mean([stats.Area]);
+        ids = find([stats.Area] > mean_area * SURGE_MEAN_AREA);
+        
+        % if one blob is romoved by it smallness
+        if (size(ids) < 3)
+            sort_stats = table2struct(sortrows(struct2table(stats),'Area','descend'));
+            min_area = sort_stats(3,1).Area;
+            ids = find([stats.Area] >= min_area);
+        end
+        
+    elseif (size(stats,1) == 3)   % if there are 3 blobs aready   
+        ids = [1;2;3];
+    end
     
+    % ids = find([stats.Area] > 70); 
+    
+     marker_blobs = ismember(labelmatrix(BW1), ids);
 %    imshow(marker_blobs)
     %     subplot(2,3,6), imshow(marker_blobs), title('makerblobs img');
     %    

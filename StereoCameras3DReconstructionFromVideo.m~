@@ -27,12 +27,12 @@ clear all;
 
 
 %% Static values
-TYPE_DATA_INPUT = 1;        % 1-Eken(video) || 2-ps3(images)
+TYPE_DATA_INPUT = 2;        % 1-Eken(video) || 2-ps3(images)
 TYPE_IMG_PROC = 1;          % 1-Img Proc each frame  or 2-background 
                             % substraction
-N_MARKERS = 7;              % dynamic number markers
+N_MARKERS = 3;              % dynamic number markers
 NUM_MARKERS = N_MARKERS;    % (N marker), (7 marker) or (9 marker) values
-OSCILATION = 0;             % 0 (OFF ) , 1(ON) | It show osilation graphs
+OSCILATION = true;          % (OFF - ON) | It show osilation graphs
 
 % TYPE_IMG_PROC = 2
 BINARY_THRES_A = 0.8;
@@ -44,8 +44,8 @@ MIN_AREA = 2;
 MAX_AREA = 60;
 
 THRESH_L = 230;
-THRESH_R = 238;
-SURGE_MEAN_AREA = 0.48;      % multiplier to filter blob sizes detected
+THRESH_R = 230 +10 ;
+SURGE_MEAN_AREA = 1;      % multiplier to filter blob sizes detected
 
 % Limits
 MARGIN = 0;
@@ -56,8 +56,8 @@ RIG_LIM = 1280 - MARGIN;
 
 % Out of Phase frames
 isSync = true;
-outOfPhase_l =493;             % number of out of phase left frames
-outOfPhase_r = 488;             % number of out of phase right frames
+outOfPhase_l =0;             % number of out of phase left frames
+outOfPhase_r = 0;             % number of out of phase right frames
 isBlinking_l = false;
 isBlinking_r = false;
 SYNC_UMBRAL = 230;
@@ -112,17 +112,17 @@ global lhee_x; lhee_x = []; global lhee_y; lhee_y = []; global lhee_z; lhee_z = 
 global lteo_x; lteo_x = []; global lteo_y; lteo_y = []; global lteo_z; lteo_z = [];
 % sagittal angels
 sagittal_hip_ang = [];
-sagittal_pel_ang = [];
+sagittal_plv_ang = [];
 sagittal_kne_ang = [];
 sagittal_ank_ang = [];
 % sagittal angels
 frontal_hip_ang = [];
-frontal_pel_ang = [];
+frontal_plv_ang = [];
 frontal_kne_ang = [];
 frontal_ank_ang = [];
 % sagittal angels
 transversal_hip_ang = [];
-transversal_pel_ang = [];
+transversal_plv_ang = [];
 transversal_kne_ang = [];
 transversal_ank_ang = [];
 countLeft = [];
@@ -170,11 +170,16 @@ player_right = vision.DeployableVideoPlayer( ...
 
 
 % Oscilation - live data
-if OSCILATION == 1
+if OSCILATION
+    % uncomment to easily notice the osicilitaion in x,y and coordinates
+%     [HX PX] = InitPlotOscilation(-0.05, 0.05,'X - Oscilation');
+%     [HY PY] = InitPlotOscilation(-0.05, 0.05,'Y - Oscilation');
+%     [HZ PZ] = InitPlotOscilation(0.03, 0.10,'Z - Oscilation');
     
-    [HX PX] = InitPlotOscilation(-0.3, 0.5,'X - Oscilation');
-    [HY PY] = InitPlotOscilation(-0.1, 0.09,'Y - Oscilation');
-    [HZ PZ] = InitPlotOscilation(2.9, 3.1,'Z - Oscilation');
+    [HX PX] = InitPlotOscilation(-30, 50,'X - Oscilation');
+    [HY PY] = InitPlotOscilation(-40, 30,'Y - Oscilation');
+    [HZ PZ] = InitPlotOscilation(20, 150,'Z - Oscilation');
+    
     startTime = datetime('now');
 
 end
@@ -183,33 +188,42 @@ end
 
 
 %% Load cameras stereoParams 
-load('./visionData/videoCalibration/stereoParams_test_12.mat');
-% load './visionData/videoCalibration/stereoParams_test_12';
+load('./visionData/videoCalibration/stereoParams_test_pseye_01.mat');
+% load './visionData/videoCalibration/stereoParams_test_pseye_01';
 
 %% Create a streaming point cloud viewer
-player3D =  pcplayer( ...
-                [-4, 3], [-1,1], [-0.5, 7], 'VerticalAxis', 'y', ...
-                'VerticalAxisDir', 'down', 'MarkerSize', 1300 ...
-            );
+% player3D =  pcplayer( ...
+%                 [-4, 3], [-1,1], [-0.5, 7], 'VerticalAxis', 'y', ...
+%                 'VerticalAxisDir', 'down', 'MarkerSize', 1300 ...
+%             );
+
+% uncomment to easily notice the osicilitaion in x,y and coordinates
 % player3D = pcplayer( ...
-%     [-8, 6], [-10,10], [-4.5, 11], 'VerticalAxis', 'y', ...
-%     'VerticalAxisDir', 'down', 'MarkerSize', 2700);
-xlabel(player3D.Axes,'x-axis (m)');
-ylabel(player3D.Axes,'y-axis (m)');
-zlabel(player3D.Axes,'z-axis (m)');
+%     [-0.05, 0.05], [-0.05, 0.05], [0, 0.3], 'VerticalAxis', 'y', ...
+%     'VerticalAxisDir', 'down', 'MarkerSize', 1000);
+
+
+player3D = pcplayer( ...
+    [-30, 50], [-30, 20], [30, 150], 'VerticalAxis', 'y', ...
+    'VerticalAxisDir', 'down', 'MarkerSize', 12000);
+
+
+xlabel(player3D.Axes,'x-axis (cm)');
+ylabel(player3D.Axes,'y-axis (cm)');
+zlabel(player3D.Axes,'z-axis (cm)');
   
 %% Reconstruct the 3D locations of matched Points	
 % compute camera matrices for each position of the camera	
 camMatrixLeft = ...
     cameraMatrix( ...
-        stereoParams_test_12.CameraParameters1, ...
+        stereoParams_test_pseye_01.CameraParameters1, ...
         eye(3), [0 0 0] ...
     );
 camMatrixRight = ... 
     cameraMatrix( ...
-        stereoParams_test_12.CameraParameters2, ...
-        stereoParams_test_12.RotationOfCamera2, ...
-        stereoParams_test_12.TranslationOfCamera2 ...
+        stereoParams_test_pseye_01.CameraParameters2, ...
+        stereoParams_test_pseye_01.RotationOfCamera2, ...
+        stereoParams_test_pseye_01.TranslationOfCamera2 ...
     );
                              
 % reading both video files
@@ -228,8 +242,8 @@ if TYPE_DATA_INPUT == 1
 
 elseif TYPE_DATA_INPUT == 2
    % getting number of image manualy
-   iteFrames = 0;
-   endFrames = 2900;
+   iteFrames = 0; %kevin
+   endFrames = 769;
 end
 
 % getting the background images from both cameras
@@ -263,7 +277,7 @@ while iteFrames < endFrames
 
             ps3Index = iteFrames;
             % retrieve ps3's frames - no syncing process(test mode)
-            frameLeft  = imread(['../ps3RawFiles/cam0/img' , num2str(ps3Index) , '.jpg']);
+            frameLeft  = imread(['../ps3RawFiles/cam0/img' , num2str(ps3Index +1) , '.jpg']);
             frameRight = imread(['../ps3RawFiles/cam1/img' , num2str(ps3Index) , '.jpg']);  
         end
 %         //
@@ -330,12 +344,12 @@ while iteFrames < endFrames
     frameLeft = ...
         undistortImage( ...
             frameLeft, ...
-            stereoParams_test_12.CameraParameters1 ...
+            stereoParams_test_pseye_01.CameraParameters1 ...
         );
     frameRight = ...
         undistortImage( ...
             frameRight, ...
-            stereoParams_test_12.CameraParameters2 ...
+            stereoParams_test_pseye_01.CameraParameters2 ...
         );
     % show
     % figure
@@ -344,7 +358,7 @@ while iteFrames < endFrames
 
 
     % continue with the process of markers recognition
-    % depending in the type of process 
+    % depending on the type of process 
     if TYPE_IMG_PROC == 1
         
         [frameLeftBinary, markersPosXY_Left] = ...
@@ -466,36 +480,38 @@ while iteFrames < endFrames
                                    camMatrixLeft, camMatrixRight);
 
             % Convert to meters and create a pointCloud object
-            points3D = points3D ./ 1000;
-
-            %% Turn Points3D into an array of dictiories        
-            [lbwt lfwt ltrc lkne lank lhee lteo] = GetArrayDicPoints3D(points3D);
-
-            %% SavePoints3D - cooking data to be used in JsonEncode
-            lbwt_x{idx_raw_data}= lbwt('x'); lbwt_y{idx_raw_data}= lbwt('y'); lbwt_z{idx_raw_data}= lbwt('z');
-            lfwt_x{idx_raw_data}= lfwt('x'); lfwt_y{idx_raw_data}= lfwt('y'); lfwt_z{idx_raw_data}= lfwt('z');
-            ltrc_x{idx_raw_data}= ltrc('x'); ltrc_y{idx_raw_data}= ltrc('y'); ltrc_z{idx_raw_data}= ltrc('z');
-            lkne_x{idx_raw_data}= lkne('x'); lkne_y{idx_raw_data}= lkne('y'); lkne_z{idx_raw_data}= lkne('z');
-            lank_x{idx_raw_data}= lank('x'); lank_y{idx_raw_data}= lank('y'); lank_z{idx_raw_data}= lank('z');
-            lhee_x{idx_raw_data}= lhee('x'); lhee_y{idx_raw_data}= lhee('y'); lhee_z{idx_raw_data}= lhee('z');
-            lteo_x{idx_raw_data}= lteo('x'); lteo_y{idx_raw_data}= lteo('y'); lteo_z{idx_raw_data}= lteo('z');
-
+            points3D = points3D ;
+            
 
             % Calulate angles when there are 7 markers only 
             if NUM_MARKERS == 7
+                
+                %% Turn Points3D into an array of dictiories        
+                [lbwt lfwt ltrc lkne lank lhee lteo] = GetArrayDicPoints3D(points3D);
+
+                %% SavePoints3D - cooking data to be used in JsonEncode
+                lbwt_x{idx_raw_data}= lbwt('x'); lbwt_y{idx_raw_data}= lbwt('y'); lbwt_z{idx_raw_data}= lbwt('z');
+                lfwt_x{idx_raw_data}= lfwt('x'); lfwt_y{idx_raw_data}= lfwt('y'); lfwt_z{idx_raw_data}= lfwt('z');
+                ltrc_x{idx_raw_data}= ltrc('x'); ltrc_y{idx_raw_data}= ltrc('y'); ltrc_z{idx_raw_data}= ltrc('z');
+                lkne_x{idx_raw_data}= lkne('x'); lkne_y{idx_raw_data}= lkne('y'); lkne_z{idx_raw_data}= lkne('z');
+                lank_x{idx_raw_data}= lank('x'); lank_y{idx_raw_data}= lank('y'); lank_z{idx_raw_data}= lank('z');
+                lhee_x{idx_raw_data}= lhee('x'); lhee_y{idx_raw_data}= lhee('y'); lhee_z{idx_raw_data}= lhee('z');
+                lteo_x{idx_raw_data}= lteo('x'); lteo_y{idx_raw_data}= lteo('y'); lteo_z{idx_raw_data}= lteo('z');
+
+
 
                 lstResThreePlanes = jsondecode(GetJsonOfCalculatedAnglesInThreePlanes(points3D));  
 
                 sagittal_hip_ang(idx_raw_data) = lstResThreePlanes.S_ANG_HIP;
-                sagittal_pel_ang(idx_raw_data) = lstResThreePlanes.S_ANG_PEL;
+                sagittal_plv_ang(idx_raw_data) = lstResThreePlanes.S_ANG_PEL;
                 sagittal_kne_ang(idx_raw_data) = lstResThreePlanes.S_ANG_KNE;
                 sagittal_ank_ang(idx_raw_data) = lstResThreePlanes.S_ANG_ANK;
                 frontal_hip_ang(idx_raw_data) = lstResThreePlanes.F_ANG_HIP;
-                frontal_pel_ang(idx_raw_data) = lstResThreePlanes.F_ANG_PEL;
+                frontal_plv_ang(idx_raw_data) = lstResThreePlanes.F_ANG_PEL;
                 frontal_kne_ang(idx_raw_data) = lstResThreePlanes.F_ANG_KNE;
                 frontal_ank_ang(idx_raw_data) = lstResThreePlanes.F_ANG_ANK;
                 transversal_hip_ang(idx_raw_data) = lstResThreePlanes.T_ANG_HIP;
-                transversal_pel_ang(idx_raw_data) = lstResThreePlanes.T_ANG_PEL;
+                transversal_plv_ang(idx_raw_data) = lstResThreePlanes.T_ANG_PEL;
                 transversal_kne_ang(idx_raw_data) = lstResThreePlanes.T_ANG_KNE;
                 transversal_ank_ang(idx_raw_data) = lstResThreePlanes.T_ANG_ANK;
 
@@ -521,15 +537,15 @@ while iteFrames < endFrames
                     kinematicsAnalysisGaitAngles = ...
                         jsonencode(table( ...
                                         sagittal_hip_ang, ...
-                                        sagittal_pel_ang, ...
+                                        sagittal_plv_ang, ...
                                         sagittal_kne_ang, ...
                                         sagittal_ank_ang, ...
                                         frontal_hip_ang, ...
-                                        frontal_pel_ang, ...
+                                        frontal_plv_ang, ...
                                         frontal_kne_ang, ...
                                         frontal_ank_ang, ...
                                         transversal_hip_ang, ...
-                                        transversal_pel_ang, ...
+                                        transversal_plv_ang, ...
                                         transversal_kne_ang, ...
                                         transversal_ank_ang ...
                                     ));
@@ -563,13 +579,13 @@ while iteFrames < endFrames
             % Visualize the point cloud / Update points
             view(player3D, ptCloud);
 
-            if OSCILATION == 1
+            if OSCILATION
                 % subplot(3,1,1);
-                UpdatePlotOscilation(HX, PX, points3D(1,1), startTime,1);
+                UpdatePlotOscilation(HX, PX, points3D(2,1), startTime,1);
                 % subplot(3,1,2);
-                UpdatePlotOscilation(HY, PY, points3D(1,2), startTime,2);
+                UpdatePlotOscilation(HY, PY, points3D(2,2), startTime,2);
                 % subplot(3,1,3);
-                UpdatePlotOscilation(HZ, PZ, points3D(1,3), startTime,3);
+                UpdatePlotOscilation(HZ, PZ, points3D(2,3), startTime,3);
 
             end
 
@@ -578,15 +594,15 @@ while iteFrames < endFrames
         else
 
             sagittal_hip_ang(idx_raw_data) = prev_S_ANG_HIP;
-            sagittal_pel_ang(idx_raw_data) = prev_S_ANG_PEL;
+            sagittal_plv_ang(idx_raw_data) = prev_S_ANG_PEL;
             sagittal_kne_ang(idx_raw_data) = prev_S_ANG_KNE;
             sagittal_ank_ang(idx_raw_data) = prev_S_ANG_ANK;
             frontal_hip_ang(idx_raw_data) = prev_F_ANG_HIP;
-            frontal_pel_ang(idx_raw_data) = prev_F_ANG_PEL;
+            frontal_plv_ang(idx_raw_data) = prev_F_ANG_PEL;
             frontal_kne_ang(idx_raw_data) = prev_F_ANG_KNE;
             frontal_ank_ang(idx_raw_data) = prev_F_ANG_ANK;
             transversal_hip_ang(idx_raw_data) = prev_T_ANG_HIP;
-            transversal_pel_ang(idx_raw_data) = prev_T_ANG_PEL;
+            transversal_plv_ang(idx_raw_data) = prev_T_ANG_PEL;
             transversal_kne_ang(idx_raw_data) = prev_T_ANG_KNE;
             transversal_ank_ang(idx_raw_data) = prev_T_ANG_ANK;
 
@@ -946,7 +962,7 @@ function [markerImage markerPoints] = TestKernels(I1,THRESH_MIN,SURGE_MEAN_AREA,
 
      % BW1_TH = thresh_min < img ; % green channel
     BW1_TH = THRESH_MIN < rgb2gray(I1) ;
-    %     subplot(2,3,3), imshow(BW1_TH), title('thresh_min img');
+%         subplot(2,3,3), imshow(BW1_TH), title('thresh_min img');
         
     %     BW1_TH = im2uint8(BW1_TH);
     %     %Applying kernels
@@ -978,12 +994,26 @@ function [markerImage markerPoints] = TestKernels(I1,THRESH_MIN,SURGE_MEAN_AREA,
     BW1 = bwconncomp(BW1_TH); 
     %     subplot(2,3,5), imshow(BW1), title('bwconncomp');
     
+    ids = [];
     stats = regionprops(BW1, 'Area','Eccentricity'); 
-    mean_area =  mean([stats.Area]);
-    ids = find([stats.Area] > mean_area * SURGE_MEAN_AREA); 
-    % ids = find([stats.Area] > 70); 
-    marker_blobs = ismember(labelmatrix(BW1), ids);
+    if not (size(stats,1) < 4 )
+        mean_area =  mean([stats.Area]);
+        ids = find([stats.Area] > mean_area * SURGE_MEAN_AREA);
+        
+        % if one blob is romoved by it smallness
+        if (size(ids) < 3)
+            sort_stats = table2struct(sortrows(struct2table(stats),'Area','descend'));
+            min_area = sort_stats(3,1).Area;
+            ids = find([stats.Area] >= min_area);
+        end
+        
+    elseif (size(stats,1) == 3)   % if there are 3 blobs aready   
+        ids = [1;2;3];
+    end
     
+    % ids = find([stats.Area] > 70); 
+    
+     marker_blobs = ismember(labelmatrix(BW1), ids);
 %    imshow(marker_blobs)
     %     subplot(2,3,6), imshow(marker_blobs), title('makerblobs img');
     %    
@@ -1561,9 +1591,7 @@ function ang = CalculateAnkleAnglesSagittal(LKNE, LANK, LHEE, LTOE)
     lheeAbs = CalculateAbsoluteAngle(LHEE,LTOE);
 
     lankAbs = CalculateAbsoluteAngle(LANK,LKNE);
-    
 
-%     ang = lheeAbs - lankAbs;
     ang = lheeAbs - (90 + lankAbs);
 
 end
@@ -1871,7 +1899,7 @@ function call_put_method_from_onlineMatlab_NO_RESPONSE()
 
     contentType = matlab.net.http.HeaderField('ContentType','application/json');
     token       = matlab.net.http.HeaderField('x-access-token','eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyIkX18iOnsic3RyaWN0TW9kZSI6dHJ1ZSwiZ2V0dGVycyI6e30sIndhc1BvcHVsYXRlZCI6ZmFsc2UsImFjdGl2ZVBhdGhzIjp7InBhdGhzIjp7Im1lZGljYWxDZW50ZXJzLnJlcXVlc3RlZF9hdCI6ImRlZmF1bHQiLCJfX3YiOiJpbml0IiwiYWRkcmVzcy5jb3VudHJ5IjoiaW5pdCIsImFkZHJlc3MuemlwIjoiaW5pdCIsImFkZHJlc3Muc3RhdGUiOiJpbml0IiwiYWRkcmVzcy5jaXR5IjoiaW5pdCIsImFkZHJlc3Muc3RyZWV0IjoiaW5pdCIsIm1lZGljYWxDZW50ZXJzLmFjY2VwdGVkX2F0IjoiaW5pdCIsIm1lZGljYWxDZW50ZXJzLnN0YXR1c19yZXF1ZXN0IjoiaW5pdCIsIm1lZGljYWxDZW50ZXJzLm5hbWUiOiJpbml0IiwibWVkaWNhbENlbnRlcnMuX2lkIjoiaW5pdCIsIm5hbWVzIjoiaW5pdCIsImdlbmRlciI6ImluaXQiLCJpZF9Eb2N1bWVudF90eXBlIjoiaW5pdCIsImlkX0RvY3VtZW50X251bSI6ImluaXQiLCJiaXJ0aCI6ImluaXQiLCJlbWFpbCI6ImluaXQiLCJwaG9uZSI6ImluaXQiLCJjZWxscGhvbmUiOiJpbml0IiwibnVtX2N0bXAiOiJpbml0IiwibnVtX25kdGEiOiJpbml0IiwiaXNfYWN0aXZlIjoiaW5pdCIsInVzZXJuYW1lIjoiaW5pdCIsInBhc3N3b3JkIjoiaW5pdCIsIl9pZCI6ImluaXQifSwic3RhdGVzIjp7Imlnbm9yZSI6e30sImRlZmF1bHQiOnsibWVkaWNhbENlbnRlcnMucmVxdWVzdGVkX2F0Ijp0cnVlfSwiaW5pdCI6eyJfX3YiOnRydWUsImFkZHJlc3MuY291bnRyeSI6dHJ1ZSwiYWRkcmVzcy56aXAiOnRydWUsImFkZHJlc3Muc3RhdGUiOnRydWUsImFkZHJlc3MuY2l0eSI6dHJ1ZSwiYWRkcmVzcy5zdHJlZXQiOnRydWUsIm1lZGljYWxDZW50ZXJzLmFjY2VwdGVkX2F0Ijp0cnVlLCJtZWRpY2FsQ2VudGVycy5zdGF0dXNfcmVxdWVzdCI6dHJ1ZSwibWVkaWNhbENlbnRlcnMubmFtZSI6dHJ1ZSwibWVkaWNhbENlbnRlcnMuX2lkIjp0cnVlLCJuYW1lcyI6dHJ1ZSwiZ2VuZGVyIjp0cnVlLCJpZF9Eb2N1bWVudF90eXBlIjp0cnVlLCJpZF9Eb2N1bWVudF9udW0iOnRydWUsImJpcnRoIjp0cnVlLCJlbWFpbCI6dHJ1ZSwicGhvbmUiOnRydWUsImNlbGxwaG9uZSI6dHJ1ZSwibnVtX2N0bXAiOnRydWUsIm51bV9uZHRhIjp0cnVlLCJpc19hY3RpdmUiOnRydWUsInVzZXJuYW1lIjp0cnVlLCJwYXNzd29yZCI6dHJ1ZSwiX2lkIjp0cnVlfSwibW9kaWZ5Ijp7fSwicmVxdWlyZSI6e319LCJzdGF0ZU5hbWVzIjpbInJlcXVpcmUiLCJtb2RpZnkiLCJpbml0IiwiZGVmYXVsdCIsImlnbm9yZSJdfSwiZW1pdHRlciI6eyJkb21haW4iOm51bGwsIl9ldmVudHMiOnt9LCJfZXZlbnRzQ291bnQiOjAsIl9tYXhMaXN0ZW5lcnMiOjB9fSwiaXNOZXciOmZhbHNlLCJfZG9jIjp7ImFkZHJlc3MiOnsiY291bnRyeSI6IlBlcnUiLCJ6aXAiOjQ1NzY0NSwic3RhdGUiOiJMaW1hIiwiY2l0eSI6IkxpbWEiLCJzdHJlZXQiOiJDYWxsZSBBbGFtZWRhIFNhbnRvcyAzNDQgRHB0byAzMDQifSwibWVkaWNhbENlbnRlcnMiOnsicmVxdWVzdGVkX2F0IjoiMjAxNi0xMi0xNVQwMTo1Mzo0Mi4xMzJaIiwiYWNjZXB0ZWRfYXQiOiIyMDE2LTExLTIwVDA0OjE5OjEzLjAwMFoiLCJzdGF0dXNfcmVxdWVzdCI6IjEiLCJuYW1lIjoiTHVpcyBNYW51ZWwiLCJfaWQiOiIzNDU2Nzg5MDQ1NjU4NDhmcjVnciJ9LCJfX3YiOjAsIm5hbWVzIjoiSG9ydGVuY2lhIiwiZ2VuZGVyIjoiNCIsImlkX0RvY3VtZW50X3R5cGUiOiJETkkiLCJpZF9Eb2N1bWVudF9udW0iOjEyMzQ1Njc4LCJiaXJ0aCI6IjIwMTYtMTEtMjBUMDQ6MTk6MTMuMDAwWiIsImVtYWlsIjoibWFudWVsQGdtYWlsLmNvbSIsInBob25lIjoiMjM0IDU0IDEzIiwiY2VsbHBob25lIjoiOTk5IDk5OSA5OTkiLCJudW1fY3RtcCI6NjU0MiwibnVtX25kdGEiOjU0NTM0NTQzLCJpc19hY3RpdmUiOmZhbHNlLCJ1c2VybmFtZSI6InRlcmFwZXV0YSIsInBhc3N3b3JkIjoiYWRtaW4iLCJfaWQiOiI1ODUxZjYwMTczZGMxMTA3MmEwYTFhOTIifSwiX3ByZXMiOnsiJF9fb3JpZ2luYWxfc2F2ZSI6W251bGwsbnVsbF0sIiRfX29yaWdpbmFsX3ZhbGlkYXRlIjpbbnVsbF0sIiRfX29yaWdpbmFsX3JlbW92ZSI6W251bGxdfSwiX3Bvc3RzIjp7IiRfX29yaWdpbmFsX3NhdmUiOltdLCIkX19vcmlnaW5hbF92YWxpZGF0ZSI6W10sIiRfX29yaWdpbmFsX3JlbW92ZSI6W119LCJpYXQiOjE0ODE3NjY4MjJ9.xDNN-rILCYc5vqVJzpLn3DIqOqMMPTEBuYHgvISoHPw');
-    data = '{"frontal_ank_ang":[[0,36.6239548],[25,36.4931221],[50,37.341877],[75,36.720871],[100,37.5084839]],"frontal_hip_ang":[[0,-15.1074829],[25,-18.0453186],[50,-19.9585114],[75,-18.5435333],[100,-17.369957]],"frontal_kne_ang":[[0,11.1828613],[25,11.6198273],[50,11.7042236],[75,12.1821899],[100,12.5167847]],"frontal_pel_ang":[[0,32.3737335],[25,34.7032623],[50,35.633728],[75,33.6650696],[100,32.0141296]],"lank_x":[-0.196061328,-0.203023106,-0.218700916,-0.225095689,-0.231692597],"lank_y":[-0.420783848,-0.42057389,-0.421292871,-0.42000255,-0.419347942],"lank_z":[2.17449808,2.16681194,2.16470051,2.15764642,2.15254688],"lbwt_x":[-0.393105537,-0.396787971,-0.396567762,-0.396149278,-0.396363825],"lbwt_y":[0.5032323,0.505407453,0.504468918,0.503683329,0.503267586],"lbwt_z":[2.09581971,2.10831928,2.10714889,2.1042223,2.10406065],"lfwt_x":[-0.452916354,-0.453837514,-0.452574,-0.4539482,-0.455589712],"lfwt_y":[0.465313643,0.465899676,0.464322478,0.465187132,0.466238827],"lfwt_z":[2.06577969,2.06500983,2.05494,2.05894017,2.06281328],"lhee_x":[-0.309819102,-0.317615777,-0.332148224,-0.337794483,-0.346177489],"lhee_y":[-0.284540892,-0.285112321,-0.285361111,-0.284648478,-0.2865206],"lhee_z":[2.03655028,2.03527379,2.03279686,2.02381492,2.02748036],"lkne_x":[-0.449661583,-0.454836875,-0.461455703,-0.466332018,-0.471145421],"lkne_y":[0.0472802892,0.0475298762,0.0474403,0.0473098457,0.0473588556],"lkne_z":[2.07491016,2.07238793,2.05870271,2.059623,2.05925727],"lteo_x":[-0.363877326,-0.372853577,-0.38802281,-0.396190941,-0.401162326],"lteo_y":[-0.400856256,-0.402344018,-0.403678596,-0.404509485,-0.40268153],"lteo_z,":[2.09296727,2.09668612,2.09081817,2.08942771,2.07546449],"ltrc_x":[-0.587236404,-0.587881267,-0.586992264,-0.587410867,-0.58835113],"ltrc_y":[0.489899963,0.49217546,0.494793296,0.495378137,0.495900422],"ltrc_z":[2.08689213,2.08598948,2.08208537,2.08216238,2.08255839],"sagittal_ank_ang":[[0,36.6239548],[25,36.4931221],[50,37.341877],[75,36.720871],[100,37.5084839]],"sagittal_hip_ang":[[0,-15.1074829],[25,-18.0453186],[50,-19.9585114],[75,-18.5435333],[100,-17.369957]],"sagittal_kne_ang":[[0,11.1828613],[25,11.6198273],[50,11.7042236],[75,12.1821899],[100,12.5167847]],"sagittal_pel_ang":[[0,32.3737335],[25,34.7032623],[50,35.633728],[75,33.6650696],[100,32.0141296]],"transversal_ank_ang":[[0,36.6239548],[25,36.4931221],[50,37.341877],[75,36.720871],[100,37.5084839]],"transversal_hip_ang":[[0,-15.1074829],[25,-18.0453186],[50,-19.9585114],[75,-18.5435333],[100,-17.369957]],"transversal_kne_ang":[[0,11.1828613],[25,11.6198273],[50,11.7042236],[75,12.1821899],[100,12.5167847]],"transversal_pel_ang":[[0,32.3737335],[25,34.7032623],[50,35.633728],[75,33.6650696],[100,32.0141296]]}';
+    data = '{"frontal_ank_ang":[[0,36.6239548],[25,36.4931221],[50,37.341877],[75,36.720871],[100,37.5084839]],"frontal_hip_ang":[[0,-15.1074829],[25,-18.0453186],[50,-19.9585114],[75,-18.5435333],[100,-17.369957]],"frontal_kne_ang":[[0,11.1828613],[25,11.6198273],[50,11.7042236],[75,12.1821899],[100,12.5167847]],"frontal_plv_ang":[[0,32.3737335],[25,34.7032623],[50,35.633728],[75,33.6650696],[100,32.0141296]],"lank_x":[-0.196061328,-0.203023106,-0.218700916,-0.225095689,-0.231692597],"lank_y":[-0.420783848,-0.42057389,-0.421292871,-0.42000255,-0.419347942],"lank_z":[2.17449808,2.16681194,2.16470051,2.15764642,2.15254688],"lbwt_x":[-0.393105537,-0.396787971,-0.396567762,-0.396149278,-0.396363825],"lbwt_y":[0.5032323,0.505407453,0.504468918,0.503683329,0.503267586],"lbwt_z":[2.09581971,2.10831928,2.10714889,2.1042223,2.10406065],"lfwt_x":[-0.452916354,-0.453837514,-0.452574,-0.4539482,-0.455589712],"lfwt_y":[0.465313643,0.465899676,0.464322478,0.465187132,0.466238827],"lfwt_z":[2.06577969,2.06500983,2.05494,2.05894017,2.06281328],"lhee_x":[-0.309819102,-0.317615777,-0.332148224,-0.337794483,-0.346177489],"lhee_y":[-0.284540892,-0.285112321,-0.285361111,-0.284648478,-0.2865206],"lhee_z":[2.03655028,2.03527379,2.03279686,2.02381492,2.02748036],"lkne_x":[-0.449661583,-0.454836875,-0.461455703,-0.466332018,-0.471145421],"lkne_y":[0.0472802892,0.0475298762,0.0474403,0.0473098457,0.0473588556],"lkne_z":[2.07491016,2.07238793,2.05870271,2.059623,2.05925727],"lteo_x":[-0.363877326,-0.372853577,-0.38802281,-0.396190941,-0.401162326],"lteo_y":[-0.400856256,-0.402344018,-0.403678596,-0.404509485,-0.40268153],"lteo_z,":[2.09296727,2.09668612,2.09081817,2.08942771,2.07546449],"ltrc_x":[-0.587236404,-0.587881267,-0.586992264,-0.587410867,-0.58835113],"ltrc_y":[0.489899963,0.49217546,0.494793296,0.495378137,0.495900422],"ltrc_z":[2.08689213,2.08598948,2.08208537,2.08216238,2.08255839],"sagittal_ank_ang":[[0,36.6239548],[25,36.4931221],[50,37.341877],[75,36.720871],[100,37.5084839]],"sagittal_hip_ang":[[0,-15.1074829],[25,-18.0453186],[50,-19.9585114],[75,-18.5435333],[100,-17.369957]],"sagittal_kne_ang":[[0,11.1828613],[25,11.6198273],[50,11.7042236],[75,12.1821899],[100,12.5167847]],"sagittal_plv_ang":[[0,32.3737335],[25,34.7032623],[50,35.633728],[75,33.6650696],[100,32.0141296]],"transversal_ank_ang":[[0,36.6239548],[25,36.4931221],[50,37.341877],[75,36.720871],[100,37.5084839]],"transversal_hip_ang":[[0,-15.1074829],[25,-18.0453186],[50,-19.9585114],[75,-18.5435333],[100,-17.369957]],"transversal_kne_ang":[[0,11.1828613],[25,11.6198273],[50,11.7042236],[75,12.1821899],[100,12.5167847]],"transversal_plv_ang":[[0,32.3737335],[25,34.7032623],[50,35.633728],[75,33.6650696],[100,32.0141296]]}';
     data = matlab.net.http.HeaderField('data',data);
     header = [contentType token data];
     
@@ -1893,15 +1921,15 @@ function  res = cookKinematicData(LIST_ANGLES,LIST_RAW_POINTS)
             containers.Map( ...
                 {
                     'sagittal_hip_ang', ...
-                    'sagittal_pel_ang', ...
+                    'sagittal_plv_ang', ...
                     'sagittal_kne_ang', ...
                     'sagittal_ank_ang' ...
                     'frontal_hip_ang', ...
-                    'frontal_pel_ang', ...
+                    'frontal_plv_ang', ...
                     'frontal_kne_ang', ...
                     'frontal_ank_ang' ...
                     'transversal_hip_ang', ...
-                    'transversal_pel_ang', ...
+                    'transversal_plv_ang', ...
                     'transversal_kne_ang', ...
                     'transversal_ank_ang' ...
                     'lbwt_x','lbwt_y','lbwt_z', ...
@@ -1977,15 +2005,15 @@ function  res = cookAnglesWithPercentageProgress(LIST_ANGLES)
             containers.Map( ...
                 {
                     'sagittal_hip_ang', ...
-                    'sagittal_pel_ang', ...
+                    'sagittal_plv_ang', ...
                     'sagittal_kne_ang', ...
                     'sagittal_ank_ang' ...
                     'frontal_hip_ang', ...
-                    'frontal_pel_ang', ...
+                    'frontal_plv_ang', ...
                     'frontal_kne_ang', ...
                     'frontal_ank_ang' ...
                     'transversal_hip_ang', ...
-                    'transversal_pel_ang', ...
+                    'transversal_plv_ang', ...
                     'transversal_kne_ang', ...
                     'transversal_ank_ang' ...
                 }, ...
@@ -2045,7 +2073,7 @@ function testPUTPUT(DATA) %OK It sends throug oniline matlab, since from here ha
 
     contentType = matlab.net.http.HeaderField('ContentType','application/json');
     token       = matlab.net.http.HeaderField('x-access-token','eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyIkX18iOnsic3RyaWN0TW9kZSI6dHJ1ZSwiZ2V0dGVycyI6e30sIndhc1BvcHVsYXRlZCI6ZmFsc2UsImFjdGl2ZVBhdGhzIjp7InBhdGhzIjp7Im1lZGljYWxDZW50ZXJzLnJlcXVlc3RlZF9hdCI6ImRlZmF1bHQiLCJfX3YiOiJpbml0IiwiYWRkcmVzcy5jb3VudHJ5IjoiaW5pdCIsImFkZHJlc3MuemlwIjoiaW5pdCIsImFkZHJlc3Muc3RhdGUiOiJpbml0IiwiYWRkcmVzcy5jaXR5IjoiaW5pdCIsImFkZHJlc3Muc3RyZWV0IjoiaW5pdCIsIm1lZGljYWxDZW50ZXJzLmFjY2VwdGVkX2F0IjoiaW5pdCIsIm1lZGljYWxDZW50ZXJzLnN0YXR1c19yZXF1ZXN0IjoiaW5pdCIsIm1lZGljYWxDZW50ZXJzLm5hbWUiOiJpbml0IiwibWVkaWNhbENlbnRlcnMuX2lkIjoiaW5pdCIsIm5hbWVzIjoiaW5pdCIsImdlbmRlciI6ImluaXQiLCJpZF9Eb2N1bWVudF90eXBlIjoiaW5pdCIsImlkX0RvY3VtZW50X251bSI6ImluaXQiLCJiaXJ0aCI6ImluaXQiLCJlbWFpbCI6ImluaXQiLCJwaG9uZSI6ImluaXQiLCJjZWxscGhvbmUiOiJpbml0IiwibnVtX2N0bXAiOiJpbml0IiwibnVtX25kdGEiOiJpbml0IiwiaXNfYWN0aXZlIjoiaW5pdCIsInVzZXJuYW1lIjoiaW5pdCIsInBhc3N3b3JkIjoiaW5pdCIsIl9pZCI6ImluaXQifSwic3RhdGVzIjp7Imlnbm9yZSI6e30sImRlZmF1bHQiOnsibWVkaWNhbENlbnRlcnMucmVxdWVzdGVkX2F0Ijp0cnVlfSwiaW5pdCI6eyJfX3YiOnRydWUsImFkZHJlc3MuY291bnRyeSI6dHJ1ZSwiYWRkcmVzcy56aXAiOnRydWUsImFkZHJlc3Muc3RhdGUiOnRydWUsImFkZHJlc3MuY2l0eSI6dHJ1ZSwiYWRkcmVzcy5zdHJlZXQiOnRydWUsIm1lZGljYWxDZW50ZXJzLmFjY2VwdGVkX2F0Ijp0cnVlLCJtZWRpY2FsQ2VudGVycy5zdGF0dXNfcmVxdWVzdCI6dHJ1ZSwibWVkaWNhbENlbnRlcnMubmFtZSI6dHJ1ZSwibWVkaWNhbENlbnRlcnMuX2lkIjp0cnVlLCJuYW1lcyI6dHJ1ZSwiZ2VuZGVyIjp0cnVlLCJpZF9Eb2N1bWVudF90eXBlIjp0cnVlLCJpZF9Eb2N1bWVudF9udW0iOnRydWUsImJpcnRoIjp0cnVlLCJlbWFpbCI6dHJ1ZSwicGhvbmUiOnRydWUsImNlbGxwaG9uZSI6dHJ1ZSwibnVtX2N0bXAiOnRydWUsIm51bV9uZHRhIjp0cnVlLCJpc19hY3RpdmUiOnRydWUsInVzZXJuYW1lIjp0cnVlLCJwYXNzd29yZCI6dHJ1ZSwiX2lkIjp0cnVlfSwibW9kaWZ5Ijp7fSwicmVxdWlyZSI6e319LCJzdGF0ZU5hbWVzIjpbInJlcXVpcmUiLCJtb2RpZnkiLCJpbml0IiwiZGVmYXVsdCIsImlnbm9yZSJdfSwiZW1pdHRlciI6eyJkb21haW4iOm51bGwsIl9ldmVudHMiOnt9LCJfZXZlbnRzQ291bnQiOjAsIl9tYXhMaXN0ZW5lcnMiOjB9fSwiaXNOZXciOmZhbHNlLCJfZG9jIjp7ImFkZHJlc3MiOnsiY291bnRyeSI6IlBlcnUiLCJ6aXAiOjQ1NzY0NSwic3RhdGUiOiJMaW1hIiwiY2l0eSI6IkxpbWEiLCJzdHJlZXQiOiJDYWxsZSBBbGFtZWRhIFNhbnRvcyAzNDQgRHB0byAzMDQifSwibWVkaWNhbENlbnRlcnMiOnsicmVxdWVzdGVkX2F0IjoiMjAxNi0xMi0xNVQwMTo1Mzo0Mi4xMzJaIiwiYWNjZXB0ZWRfYXQiOiIyMDE2LTExLTIwVDA0OjE5OjEzLjAwMFoiLCJzdGF0dXNfcmVxdWVzdCI6IjEiLCJuYW1lIjoiTHVpcyBNYW51ZWwiLCJfaWQiOiIzNDU2Nzg5MDQ1NjU4NDhmcjVnciJ9LCJfX3YiOjAsIm5hbWVzIjoiSG9ydGVuY2lhIiwiZ2VuZGVyIjoiNCIsImlkX0RvY3VtZW50X3R5cGUiOiJETkkiLCJpZF9Eb2N1bWVudF9udW0iOjEyMzQ1Njc4LCJiaXJ0aCI6IjIwMTYtMTEtMjBUMDQ6MTk6MTMuMDAwWiIsImVtYWlsIjoibWFudWVsQGdtYWlsLmNvbSIsInBob25lIjoiMjM0IDU0IDEzIiwiY2VsbHBob25lIjoiOTk5IDk5OSA5OTkiLCJudW1fY3RtcCI6NjU0MiwibnVtX25kdGEiOjU0NTM0NTQzLCJpc19hY3RpdmUiOmZhbHNlLCJ1c2VybmFtZSI6InRlcmFwZXV0YSIsInBhc3N3b3JkIjoiYWRtaW4iLCJfaWQiOiI1ODUxZjYwMTczZGMxMTA3MmEwYTFhOTIifSwiX3ByZXMiOnsiJF9fb3JpZ2luYWxfc2F2ZSI6W251bGwsbnVsbF0sIiRfX29yaWdpbmFsX3ZhbGlkYXRlIjpbbnVsbF0sIiRfX29yaWdpbmFsX3JlbW92ZSI6W251bGxdfSwiX3Bvc3RzIjp7IiRfX29yaWdpbmFsX3NhdmUiOltdLCIkX19vcmlnaW5hbF92YWxpZGF0ZSI6W10sIiRfX29yaWdpbmFsX3JlbW92ZSI6W119LCJpYXQiOjE0ODE3NjY4MjJ9.xDNN-rILCYc5vqVJzpLn3DIqOqMMPTEBuYHgvISoHPw');
-    data = '{"frontal_ank_ang":[[0,36.6239548],[25,36.4931221],[50,37.341877],[75,36.720871],[100,37.5084839]],"frontal_hip_ang":[[0,-15.1074829],[25,-18.0453186],[50,-19.9585114],[75,-18.5435333],[100,-17.369957]],"frontal_kne_ang":[[0,11.1828613],[25,11.6198273],[50,11.7042236],[75,12.1821899],[100,12.5167847]],"frontal_pel_ang":[[0,32.3737335],[25,34.7032623],[50,35.633728],[75,33.6650696],[100,32.0141296]],"lank_x":[-0.196061328,-0.203023106,-0.218700916,-0.225095689,-0.231692597],"lank_y":[-0.420783848,-0.42057389,-0.421292871,-0.42000255,-0.419347942],"lank_z":[2.17449808,2.16681194,2.16470051,2.15764642,2.15254688],"lbwt_x":[-0.393105537,-0.396787971,-0.396567762,-0.396149278,-0.396363825],"lbwt_y":[0.5032323,0.505407453,0.504468918,0.503683329,0.503267586],"lbwt_z":[2.09581971,2.10831928,2.10714889,2.1042223,2.10406065],"lfwt_x":[-0.452916354,-0.453837514,-0.452574,-0.4539482,-0.455589712],"lfwt_y":[0.465313643,0.465899676,0.464322478,0.465187132,0.466238827],"lfwt_z":[2.06577969,2.06500983,2.05494,2.05894017,2.06281328],"lhee_x":[-0.309819102,-0.317615777,-0.332148224,-0.337794483,-0.346177489],"lhee_y":[-0.284540892,-0.285112321,-0.285361111,-0.284648478,-0.2865206],"lhee_z":[2.03655028,2.03527379,2.03279686,2.02381492,2.02748036],"lkne_x":[-0.449661583,-0.454836875,-0.461455703,-0.466332018,-0.471145421],"lkne_y":[0.0472802892,0.0475298762,0.0474403,0.0473098457,0.0473588556],"lkne_z":[2.07491016,2.07238793,2.05870271,2.059623,2.05925727],"lteo_x":[-0.363877326,-0.372853577,-0.38802281,-0.396190941,-0.401162326],"lteo_y":[-0.400856256,-0.402344018,-0.403678596,-0.404509485,-0.40268153],"lteo_z,":[2.09296727,2.09668612,2.09081817,2.08942771,2.07546449],"ltrc_x":[-0.587236404,-0.587881267,-0.586992264,-0.587410867,-0.58835113],"ltrc_y":[0.489899963,0.49217546,0.494793296,0.495378137,0.495900422],"ltrc_z":[2.08689213,2.08598948,2.08208537,2.08216238,2.08255839],"sagittal_ank_ang":[[0,36.6239548],[25,36.4931221],[50,37.341877],[75,36.720871],[100,37.5084839]],"sagittal_hip_ang":[[0,-15.1074829],[25,-18.0453186],[50,-19.9585114],[75,-18.5435333],[100,-17.369957]],"sagittal_kne_ang":[[0,11.1828613],[25,11.6198273],[50,11.7042236],[75,12.1821899],[100,12.5167847]],"sagittal_pel_ang":[[0,32.3737335],[25,34.7032623],[50,35.633728],[75,33.6650696],[100,32.0141296]],"transversal_ank_ang":[[0,36.6239548],[25,36.4931221],[50,37.341877],[75,36.720871],[100,37.5084839]],"transversal_hip_ang":[[0,-15.1074829],[25,-18.0453186],[50,-19.9585114],[75,-18.5435333],[100,-17.369957]],"transversal_kne_ang":[[0,11.1828613],[25,11.6198273],[50,11.7042236],[75,12.1821899],[100,12.5167847]],"transversal_pel_ang":[[0,32.3737335],[25,34.7032623],[50,35.633728],[75,33.6650696],[100,32.0141296]]}';
+    data = '{"frontal_ank_ang":[[0,36.6239548],[25,36.4931221],[50,37.341877],[75,36.720871],[100,37.5084839]],"frontal_hip_ang":[[0,-15.1074829],[25,-18.0453186],[50,-19.9585114],[75,-18.5435333],[100,-17.369957]],"frontal_kne_ang":[[0,11.1828613],[25,11.6198273],[50,11.7042236],[75,12.1821899],[100,12.5167847]],"frontal_plv_ang":[[0,32.3737335],[25,34.7032623],[50,35.633728],[75,33.6650696],[100,32.0141296]],"lank_x":[-0.196061328,-0.203023106,-0.218700916,-0.225095689,-0.231692597],"lank_y":[-0.420783848,-0.42057389,-0.421292871,-0.42000255,-0.419347942],"lank_z":[2.17449808,2.16681194,2.16470051,2.15764642,2.15254688],"lbwt_x":[-0.393105537,-0.396787971,-0.396567762,-0.396149278,-0.396363825],"lbwt_y":[0.5032323,0.505407453,0.504468918,0.503683329,0.503267586],"lbwt_z":[2.09581971,2.10831928,2.10714889,2.1042223,2.10406065],"lfwt_x":[-0.452916354,-0.453837514,-0.452574,-0.4539482,-0.455589712],"lfwt_y":[0.465313643,0.465899676,0.464322478,0.465187132,0.466238827],"lfwt_z":[2.06577969,2.06500983,2.05494,2.05894017,2.06281328],"lhee_x":[-0.309819102,-0.317615777,-0.332148224,-0.337794483,-0.346177489],"lhee_y":[-0.284540892,-0.285112321,-0.285361111,-0.284648478,-0.2865206],"lhee_z":[2.03655028,2.03527379,2.03279686,2.02381492,2.02748036],"lkne_x":[-0.449661583,-0.454836875,-0.461455703,-0.466332018,-0.471145421],"lkne_y":[0.0472802892,0.0475298762,0.0474403,0.0473098457,0.0473588556],"lkne_z":[2.07491016,2.07238793,2.05870271,2.059623,2.05925727],"lteo_x":[-0.363877326,-0.372853577,-0.38802281,-0.396190941,-0.401162326],"lteo_y":[-0.400856256,-0.402344018,-0.403678596,-0.404509485,-0.40268153],"lteo_z,":[2.09296727,2.09668612,2.09081817,2.08942771,2.07546449],"ltrc_x":[-0.587236404,-0.587881267,-0.586992264,-0.587410867,-0.58835113],"ltrc_y":[0.489899963,0.49217546,0.494793296,0.495378137,0.495900422],"ltrc_z":[2.08689213,2.08598948,2.08208537,2.08216238,2.08255839],"sagittal_ank_ang":[[0,36.6239548],[25,36.4931221],[50,37.341877],[75,36.720871],[100,37.5084839]],"sagittal_hip_ang":[[0,-15.1074829],[25,-18.0453186],[50,-19.9585114],[75,-18.5435333],[100,-17.369957]],"sagittal_kne_ang":[[0,11.1828613],[25,11.6198273],[50,11.7042236],[75,12.1821899],[100,12.5167847]],"sagittal_plv_ang":[[0,32.3737335],[25,34.7032623],[50,35.633728],[75,33.6650696],[100,32.0141296]],"transversal_ank_ang":[[0,36.6239548],[25,36.4931221],[50,37.341877],[75,36.720871],[100,37.5084839]],"transversal_hip_ang":[[0,-15.1074829],[25,-18.0453186],[50,-19.9585114],[75,-18.5435333],[100,-17.369957]],"transversal_kne_ang":[[0,11.1828613],[25,11.6198273],[50,11.7042236],[75,12.1821899],[100,12.5167847]],"transversal_plv_ang":[[0,32.3737335],[25,34.7032623],[50,35.633728],[75,33.6650696],[100,32.0141296]]}';
     data = matlab.net.http.HeaderField('data',data);
     header = [contentType token data];
     
