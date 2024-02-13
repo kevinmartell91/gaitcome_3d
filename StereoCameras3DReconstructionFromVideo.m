@@ -1,92 +1,65 @@
-% clear previou values in memory
+% Clear previous values in memory
 clc;
 close all;
 clear all;
 
-% vecKev = [];
-% vecNor = [];
-% id = 1;
-% for i = 400:-1:1
-% for i = 1:400
-%     thighAxis  = [200, 200] - [400, 0];
-%     shankAxis  = [400, i] - [200, 200]; 
-%     % dynAng = CalculateAngles2Vectors(thighAxis, shankAxis, 'relativeXX');
-%     [dynAngKev dynAngNor] = CalculateAbsoluteAnglekevinVersion(0,i,200,200);
-%     vecKev{id}= dynAngKev;
-%     vecNor{id}= dynAngNor;
-%     id = id + 1;
-% end
-% kevin = 1+1;s
-
-% TRY this http://setosa.io/ev/image-kernels/
-% convolution  => linear operations
-
-% Try this
-% https://stackoverflow.com/questions/35947438/control-frame-rate-of-video-player-in-vision-system-toolbox
-
-
-
 %% Static values
-TYPE_DATA_INPUT = 2;        % 1-Eken(video) || 2-ps3(images)
-TYPE_IMG_PROC = 1;          % 1-Img Proc each frame  or 2-background 
-                            % substraction
-N_MARKERS = 3;              % dynamic number markers
-NUM_MARKERS = N_MARKERS;    % (N marker), (7 marker) or (9 marker) values
-OSCILATION = true;          % (OFF - ON) | It show osilation graphs
+% Define input type: 1 for Eken (video), 2 for ps3 (images)
+TYPE_DATA_INPUT = 2;        
+% Define image processing type: 1 for processing each frame, 2 for background subtraction
+TYPE_IMG_PROC = 1;          
+% Number of markers to track
+N_MARKERS = 3;              
+NUM_MARKERS = N_MARKERS;    
+% Oscillation graph flag (true to show oscillation graphs)
+OSCILATION = true;          
 
-% TYPE_IMG_PROC = 2
+% Threshold values for binary image conversion
 BINARY_THRES_A = 0.8;
 BINARY_THRES_B = 0.8868;
-% BINARY_THRES_A = 0.3;
-% BINARY_THRES_B = 0.3868;
 
+% Area thresholds for marker detection
 MIN_AREA = 2;
 MAX_AREA = 60;
 
+% Threshold values for image processing
 THRESH_L = 230;
-THRESH_R = 230 +10 ;
-SURGE_MEAN_AREA = 1;      % multiplier to filter blob sizes detected
+THRESH_R = 230 + 10;
+% Multiplier to filter blob sizes detected
+SURGE_MEAN_AREA = 1;      
 
-% Limits
+% Image frame limits
 MARGIN = 0;
 TOP_LIM = MARGIN;
 BOT_LIM = 720 - MARGIN;
 LEF_LIM = MARGIN;
 RIG_LIM = 1280 - MARGIN;
 
-% Out of Phase frames
+% Sync and blink detection flags
 isSync = true;
-outOfPhase_l =0;             % number of out of phase left frames
-outOfPhase_r = 0;             % number of out of phase right frames
+outOfPhase_l = 0;             % Number of out of phase left frames
+outOfPhase_r = 0;             % Number of out of phase right frames
 isBlinking_l = false;
 isBlinking_r = false;
 SYNC_UMBRAL = 230;
 
-% 3D Reconstruction
+% 3D Reconstruction flag
 is3DEnable = true;
 
-% Which leg
+% Leg side flag (true for left, false for right)
 isLeft = true;
 
-% Skip frames 
-INI_SEC                 = 1/120;  % init at second at frame 1 
-INI_SEC_INITIAL_CONTACT_AFTER_FIRST_BLINK = 8.2;  % intial contact X seconds after 1st blink
-END_SEC                 = 9.5;  % init at second ?
+% Frame skip settings
+INI_SEC = 1/120;  % Start at second 0 for frame 1
+INI_SEC_INITIAL_CONTACT_AFTER_FIRST_BLINK = 8.2;  % Initial contact X seconds after 1st blink
+END_SEC = 9.5;  % End at second ?
 
+% Initialize global variables for previous angles
+global prev_S_ANG_HIP prev_S_ANG_PEL prev_S_ANG_KNE prev_S_ANG_ANK;
+global prev_F_ANG_HIP prev_F_ANG_PEL prev_F_ANG_KNE prev_F_ANG_ANK;
+global prev_T_ANG_HIP prev_T_ANG_PEL prev_T_ANG_KNE prev_T_ANG_ANK;
 
-global prev_S_ANG_HIP;
-global prev_S_ANG_PEL;
-global prev_S_ANG_KNE;
-global prev_S_ANG_ANK;
-global prev_F_ANG_HIP;
-global prev_F_ANG_PEL;
-global prev_F_ANG_KNE;
-global prev_F_ANG_ANK;
-global prev_T_ANG_HIP;
-global prev_T_ANG_PEL;
-global prev_T_ANG_KNE;
-global prev_T_ANG_ANK;
-
+% Set initial values for previous angles to 0
 prev_S_ANG_HIP = 0;
 prev_S_ANG_PEL = 0;
 prev_S_ANG_KNE = 0;
@@ -100,27 +73,33 @@ prev_T_ANG_PEL = 0;
 prev_T_ANG_KNE = 0;
 prev_T_ANG_ANK = 0;
 
-
 %% Initiate vectors to save 3D raw coordinates, jsonResult, angles
-idx_raw_data= 1;                     % index to manage vector position
-global lbwt_x; lbwt_x = []; global lbwt_y; lbwt_y = []; global lbwt_z; lbwt_z = [];
-global lfwt_x; lfwt_x = []; global lfwt_y; lfwt_y = []; global lfwt_z; lfwt_z = [];
-global ltrc_x; ltrc_x = []; global ltrc_y; ltrc_y = []; global ltrc_z; ltrc_z = [];
-global lkne_x; lkne_x = []; global lkne_y; lkne_y = []; global lkne_z; lkne_z = [];
-global lank_x; lank_x = []; global lank_y; lank_y = []; global lank_z; lank_z = [];
-global lhee_x; lhee_x = []; global lhee_y; lhee_y = []; global lhee_z; lhee_z = [];
-global lteo_x; lteo_x = []; global lteo_y; lteo_y = []; global lteo_z; lteo_z = [];
-% sagittal angels
+idx_raw_data = 1;  % Index to manage vector position
+% Initialize global variables for marker coordinates
+global lbwt_x lbwt_y lbwt_z;
+global lfwt_x lfwt_y lfwt_z;
+global ltrc_x ltrc_y ltrc_z;
+global lkne_x lkne_y lkne_z;
+global lank_x lank_y lank_z;
+global lhee_x lhee_y lhee_z;
+global lteo_x lteo_y lteo_z;
+lbwt_x = []; lbwt_y = []; lbwt_z = [];
+lfwt_x = []; lfwt_y = []; lfwt_z = [];
+ltrc_x = []; ltrc_y = []; ltrc_z = [];
+lkne_x = []; lkne_y = []; lkne_z = [];
+lank_x = []; lank_y = []; lank_z = [];
+lhee_x = []; lhee_y = []; lhee_z = [];
+lteo_x = []; lteo_y = []; lteo_z = [];
+
+% Initialize arrays for angles
 sagittal_hip_ang = [];
 sagittal_plv_ang = [];
 sagittal_kne_ang = [];
 sagittal_ank_ang = [];
-% sagittal angels
 frontal_hip_ang = [];
 frontal_plv_ang = [];
 frontal_kne_ang = [];
 frontal_ank_ang = [];
-% sagittal angels
 transversal_hip_ang = [];
 transversal_plv_ang = [];
 transversal_kne_ang = [];
@@ -129,31 +108,16 @@ countLeft = [];
 countRight = [];
 countIndex = 1;
 
-%% Test area
+%% Instaciating Kinematic Analysis class
 ka = CKinematicAnalysis; 
-% img = imread('./visionData/videoCalibration/camera_b/snap_to_webImgeKernel/8711.png');
 
 %% Create Video File Readers and the Video player_left
 
-% Video file reader
-videoFileLeft  = ... % camera A 
-    '../ekenRawFiles/camera_a/test_17_video/FHD0063.MOV';  
-    % '../ekenRawFiles/camera_a/test_16_video/FHD0043---.MOV';  
-    % '../ekenRawFiles/camera_a/test_11_video/FHD0629.MOV';  
-%     '../ekenRawFiles/camera_a/test_14_video/FHD0001.MOV';  
-%     '../ekenRawFiles/camera_a/test_15_video_a/FHD0005.MOV'; 
-    % '../ekenRawFiles/camera_a/test_12_video/FHD0659.MOV';   
+% Video file paths for left and right cameras
+videoFileLeft  = '../ekenRawFiles/camera_a/test_17_video/FHD0063.MOV';  
+videoFileRight = '../ekenRawFiles/camera_b/test_17_video/FHD0073.MOV';  
 
-videoFileRight = ... % camera B 
-    '../ekenRawFiles/camera_b/test_17_video/FHD0073.MOV';  
-    % '../ekenRawFiles/camera_b/test_16_video/FHD0050---.MOV';  
-    % '../ekenRawFiles/camera_B/test_11_video/FHD0623.MOV'; 
-%     '../ekenRawFiles/camera_b/test_14_video/FHD0002.MOV'; 
-%     '../ekenRawFiles/camera_b/test_15_video_b/FHD0005.MOV';
-
-
-
-% Video players
+% Initialize video players for left and right videos
 player_left = vision.DeployableVideoPlayer( ...
                 'Location', [0, 0], ...
                 'Size', 'Custom', ...
@@ -168,329 +132,203 @@ player_right = vision.DeployableVideoPlayer( ...
                 'Name', 'player_right' ...
                );
 
-
-% Oscilation - live data
+% Oscillation - live data visualization
 if OSCILATION
-    % uncomment to easily notice the osicilitaion in x,y and coordinates
-    [HX PX] = InitPlotOscilation(-0.05, 0.05,'X - Oscilation');
-    [HY PY] = InitPlotOscilation(-0.05, 0.05,'Y - Oscilation');
-    [HZ PZ] = InitPlotOscilation(0.03, 0.10,'Z - Oscilation');
-%     
-%     [HX PX] = InitPlotOscilation(-30, 50,'X - Oscilation');
-%     [HY PY] = InitPlotOscilation(-40, 30,'Y - Oscilation');
-%     [HZ PZ] = InitPlotOscilation(20, 150,'Z - Oscilation');
-%     
+    % Initialize plots for oscillation in X, Y, and Z coordinates
+    [HX, PX] = InitPlotOscilation(-0.05, 0.05,'X - Oscilation');
+    [HY, PY] = InitPlotOscilation(-0.05, 0.05,'Y - Oscilation');
+    [HZ, PZ] = InitPlotOscilation(0.03, 0.10,'Z - Oscilation');
     startTime = datetime('now');
-
 end
-
-
 
 
 %% Load cameras stereoParams 
 load('./visionData/videoCalibration/stereoParams_test_pseye_01.mat');
-% load './visionData/videoCalibration/stereoParams_test_pseye_01';
 
 %% Create a streaming point cloud viewer
-% player3D =  pcplayer( ...
-%                 [-4, 3], [-1,1], [-0.5, 7], 'VerticalAxis', 'y', ...
-%                 'VerticalAxisDir', 'down', 'MarkerSize', 1300 ...
-%             );
-
-% uncomment to easily notice the osicilitaion in x,y and coordinates
+% Adjusted for better visualization of oscillation in x, y, and z coordinates
 player3D = pcplayer( ...
     [-0.05, 0.05], [-0.05, 0.05], [0, 0.3], 'VerticalAxis', 'y', ...
     'VerticalAxisDir', 'down', 'MarkerSize', 1000);
 
-
-% player3D = pcplayer( ...
-%     [-30, 50], [-30, 20], [30, 150], 'VerticalAxis', 'y', ...
-%     'VerticalAxisDir', 'down', 'MarkerSize', 12000);
-
-
+% Set labels for the axes of the point cloud viewer
 xlabel(player3D.Axes,'x-axis (cm)');
 ylabel(player3D.Axes,'y-axis (cm)');
 zlabel(player3D.Axes,'z-axis (cm)');
   
-%% Reconstruct the 3D locations of matched Points	
-% compute camera matrices for each position of the camera	
-camMatrixLeft = ...
-    cameraMatrix( ...
+%% Compute camera matrices for each position of the camera
+camMatrixLeft = cameraMatrix( ...
         stereoParams_test_pseye_01.CameraParameters1, ...
         eye(3), [0 0 0] ...
     );
-camMatrixRight = ... 
-    cameraMatrix( ...
+camMatrixRight = cameraMatrix( ...
         stereoParams_test_pseye_01.CameraParameters2, ...
         stereoParams_test_pseye_01.RotationOfCamera2, ...
         stereoParams_test_pseye_01.TranslationOfCamera2 ...
     );
                              
-% reading both video files
+%% Initialize video file reading
 movleft = VideoReader(videoFileLeft);
 movRight = VideoReader(videoFileRight);
 
+% Determine the number of frames to process based on input type
 if TYPE_DATA_INPUT == 1
-    % getting number of frames
-    if isSync
-        iteFrames = INI_SEC_INITIAL_CONTACT_AFTER_FIRST_BLINK * movleft.FrameRate;
-    else
-        iteFrames = INI_SEC * movleft.FrameRate;
-    end
-
+    iteFrames = isSync ? INI_SEC_INITIAL_CONTACT_AFTER_FIRST_BLINK * movleft.FrameRate : INI_SEC * movleft.FrameRate;
     endFrames = END_SEC * movRight.FrameRate;
-
 elseif TYPE_DATA_INPUT == 2
-   % getting number of image manualy
-   iteFrames = 0; %kevin
-   endFrames = 769;
+    iteFrames = 0; % Manual setting for image-based input
+    endFrames = 769; % Total number of images
 end
 
-% getting the background images from both cameras
+%% Get background images from both cameras for background subtraction
 if TYPE_IMG_PROC == 2
-
-    % Image file reader
-    backgroundLeft  = read(movleft, 1); % read frame 1 from camera A
-    backgroundRight = read(movRight,1); % read frame 1 from camera B
-
+    backgroundLeft = read(movleft, 1); % Frame 1 from camera A
+    backgroundRight = read(movRight, 1); % Frame 1 from camera B
 end
-SURGE = 1;
+
+SURGE = 1; % Initialize frame surge counter
+
 %% iterating both video frames
 while iteFrames < endFrames 
 
     % Sync process
     while ~isSync
 
-%         % retrieve video frames before syncing process
-%         frameLeft = read(movleft, iteFrames);
-%         frameRight = read(movRight, iteFrames );
-        
-        
-%         //
          if TYPE_DATA_INPUT == 1
-        
-            % retrieve video frames before syncing process
+            % Retrieve video frames before syncing process
             frameLeft = read(movleft, iteFrames);
-            frameRight = read(movRight, iteFrames ); 
-
+            frameRight = read(movRight, iteFrames); 
         elseif TYPE_DATA_INPUT == 2
-
+            % Retrieve PS3 frames - no syncing process (test mode)
             ps3Index = iteFrames;
-            % retrieve ps3's frames - no syncing process(test mode)
-            frameLeft  = imread(['../ps3RawFiles/cam0/img' , num2str(ps3Index +1) , '.jpg']);
-            frameRight = imread(['../ps3RawFiles/cam1/img' , num2str(ps3Index) , '.jpg']);  
+            frameLeft  = imread(['../ps3RawFiles/cam0/img', ...
+                                 num2str(ps3Index +1), '.jpg']);
+            frameRight = imread(['../ps3RawFiles/cam1/img', ...
+                                 num2str(ps3Index), '.jpg']);  
         end
-%         //
 
-
+        % Display current frames
         step(player_left, frameLeft);
         step(player_right, frameRight);
         
-        [ isSync, outOfPhase_l, outOfPhase_r, isBlinking_l, isBlinking_r] = ...
-                DetectOutOfPhaseFrames(...
-                    frameLeft, ...
-                    frameRight, ...
-                    outOfPhase_l, ...
-                    outOfPhase_r, ...
-                    isBlinking_l, ...
-                    isBlinking_r, ...
-                    SYNC_UMBRAL, ...
-                    TOP_LIM, BOT_LIM, LEF_LIM, RIG_LIM ...
-                )
-                    
+        % Detect out-of-phase frames and blinking
+        [isSync, outOfPhase_l, outOfPhase_r, isBlinking_l, isBlinking_r] = ...
+                DetectOutOfPhaseFrames(frameLeft, frameRight, ...
+                                       outOfPhase_l, outOfPhase_r, ...
+                                       isBlinking_l, isBlinking_r, ...
+                                       SYNC_UMBRAL, TOP_LIM, BOT_LIM, ...
+                                       LEF_LIM, RIG_LIM);
+        % Increment frame counter
         iteFrames = iteFrames +1;
         
+        % If frames are synced, release video players
         if isSync
             release(player_left);
             release(player_right);
-
-
-            
+      
+            % Adjust frame counter based on data input type
             if TYPE_DATA_INPUT == 1
-                iteFrames = INI_SEC_INITIAL_CONTACT_AFTER_FIRST_BLINK * movleft.FrameRate;
+                iteFrames = INI_SEC_INITIAL_CONTACT_AFTER_FIRST_BLINK * ...
+                            movleft.FrameRate;
             elseif TYPE_DATA_INPUT == 2
                 iteFrames = 0;
             end
         end
     end
     
-    
+    % Process frames after syncing
     if TYPE_DATA_INPUT == 1
-        
         JUMP = 0;
-        % retrieve video frames after syncing process is done
+        % Retrieve video frames after syncing
         frameLeft = read(movleft, iteFrames + outOfPhase_l + (SURGE * JUMP));
-        frameRight = read(movRight, iteFrames + outOfPhase_r + (SURGE* JUMP)); 
+        frameRight = read(movRight, iteFrames + outOfPhase_r + (SURGE * JUMP)); 
 
-        % emulation of the right saggital view 
+        % Flip frames for right sagittal view emulation
         if ~isLeft
             frameLeft = flipdim(frameLeft, 2);
             frameRight = flipdim(frameRight, 2);
         end
 
-
         SURGE = SURGE +1;
 
     elseif TYPE_DATA_INPUT == 2
-        
+        % Retrieve PS3 frames - no syncing process (test mode)
         ps3Index = iteFrames;
-        % retrieve ps3's frames - no syncing process(test mode)
-        frameLeft  = imread(['../ps3RawFiles/cam0/img', num2str(ps3Index)  - outOfPhase_l, '.jpg']);
-        frameRight = imread(['../ps3RawFiles/cam1/img', num2str(ps3Index) - outOfPhase_r, '.jpg']);  
+        frameLeft  = imread(['../ps3RawFiles/cam0/img', ...
+                             num2str(ps3Index)  - outOfPhase_l, '.jpg']);
+        frameRight = imread(['../ps3RawFiles/cam1/img', ...
+                             num2str(ps3Index) - outOfPhase_r, '.jpg']);  
     end
-
 
     %% Remove lens distortion
-    frameLeft = ...
-        undistortImage( ...
-            frameLeft, ...
-            stereoParams_test_pseye_01.CameraParameters1 ...
-        );
-    frameRight = ...
-        undistortImage( ...
-            frameRight, ...
-            stereoParams_test_pseye_01.CameraParameters2 ...
-        );
-    % show
-    % figure
-    % imshowpair(frameLeft,frameRight,'montage');
-    % title('L         Undistorted Images         R');
+    frameLeft = undistortImage(frameLeft, ...
+                               stereoParams_test_pseye_01.CameraParameters1);
+    frameRight = undistortImage(frameRight, ...
+                                stereoParams_test_pseye_01.CameraParameters2);
 
-
-    % continue with the process of markers recognition
-    % depending on the type of process 
+    % Marker recognition process
     if TYPE_IMG_PROC == 1
-        
+        % Process frames using kernel testing
         [frameLeftBinary, markersPosXY_Left] = ...
-            TestKernels(frameLeft,THRESH_L,SURGE_MEAN_AREA, TOP_LIM, ...
-            BOT_LIM, LEF_LIM, RIG_LIM);
+            TestKernels(frameLeft, THRESH_L, SURGE_MEAN_AREA, TOP_LIM, ...
+                        BOT_LIM, LEF_LIM, RIG_LIM);
         [frameRightBinary, markersPosXY_Right] = ...
-            TestKernels(frameRight,THRESH_R,SURGE_MEAN_AREA, TOP_LIM, ...
-            BOT_LIM, LEF_LIM, RIG_LIM);
-        
-    elseif TYPE_IMG_PROC == 2 
-        
+            TestKernels(frameRight, THRESH_R, SURGE_MEAN_AREA, TOP_LIM, ...
+                        BOT_LIM, LEF_LIM, RIG_LIM);
+    elseif TYPE_IMG_PROC == 2
+        % Process frames using background subtraction
         [medFiltframeLeft, frameLeftBinary] = ...
-            DetectMarkers_BackgroundSubtraction( ...
-                                                backgroundLeft, ...
-                                                frameLeft, ...
+            DetectMarkers_BackgroundSubtraction(backgroundLeft, frameLeft, ...
                                                 BINARY_THRES_A);
         [medFiltframeRight, frameRightBinary] = ...
-            DetectMarkers_BackgroundSubtraction( ...
-                                                backgroundRight, ...
-                                                frameRight, ...
+            DetectMarkers_BackgroundSubtraction(backgroundRight, frameRight, ...
                                                 BINARY_THRES_B);
 
+        % Extract marker positions
         markersPosXY_Left = ...
-            ExtractMarkersPosXY(medFiltframeLeft,SURGE_MEAN_AREA);
+            ExtractMarkersPosXY(medFiltframeLeft, SURGE_MEAN_AREA);
         markersPosXY_Right = ...
-            ExtractMarkersPosXY(medFiltframeRight,SURGE_MEAN_AREA);
-        
+            ExtractMarkersPosXY(medFiltframeRight, SURGE_MEAN_AREA);    
     end
     
-    % countLeft{countIndex}= IsBlinking(frameLeft,SYNC_UMBRAL);
-    % countRight{countIndex} = IsBlinking(frameRight,SYNC_UMBRAL);
-    % countIndex = countIndex +1;
-    
-    
-    if(isSync && is3DEnable) % negate to avoid 3d analisys
-
+    % 3D analysis if frames are synced and 3D is enabled
+    if(isSync && is3DEnable) 
         numMarkersLeft = size(markersPosXY_Left,1);
         numMarkersRight = size(markersPosXY_Right,1);
 
-        % if the numerber of markers detected are equeal to NUM_MARKERS
-        % then do the 3D reconstruction and 
-        if numMarkersLeft == NUM_MARKERS && ...
-           numMarkersRight == NUM_MARKERS
-
-            % 7 markers  only
+        % Proceed with 3D reconstruction if the number of markers matches
+        if numMarkersLeft == NUM_MARKERS && numMarkersRight == NUM_MARKERS
+            % Label markers based on the number specified
             if NUM_MARKERS == 7   
-
                 matchedPointsLeft = ...
-                    LabelMarkers2DImages_7( ...
-                        DescendSort_YAxisValues(markersPosXY_Left),isLeft ...
-                    );
+                    LabelMarkers2DImages_7(DescendSort_YAxisValues(markersPosXY_Left),isLeft);
                 matchedPointsRight = ...
-                    LabelMarkers2DImages_7( ...
-                        DescendSort_YAxisValues(markersPosXY_Right), isLeft ...
-                    );
-            % 9 markers  only
+                    LabelMarkers2DImages_7(DescendSort_YAxisValues(markersPosXY_Right), isLeft);
             elseif NUM_MARKERS == 9  
-
                 matchedPointsLeft = ...
-                    LabelMarkers2DImages_9( ...
-                        DescendSort_YAxisValues(markersPosXY_Left) ...
-                    );
+                    LabelMarkers2DImages_9(DescendSort_YAxisValues(markersPosXY_Left));
                 matchedPointsRight = ...
-                    LabelMarkers2DImages_9( ...
-                        DescendSort_YAxisValues(markersPosXY_Right) ...
-                    );  
-
-            % 1 or more markers tracked
+                    LabelMarkers2DImages_9(DescendSort_YAxisValues(markersPosXY_Right));  
             elseif NUM_MARKERS == N_MARKERS 
-
                 matchedPointsLeft = ...
                     AscendentSort_SumOfAxisValues(markersPosXY_Left);
                 matchedPointsRight = ...
                     AscendentSort_SumOfAxisValues(markersPosXY_Right);
-
             end
 
-            % VisualizeLabels(frameLeft,frameLeftBinary, frameRightBinary, matchedPointsLeft);
-            
-
-            % % visualize correspondance points
-            % figure
-            % showMatchedFeatures(frameLeft, frameRight, matchedPointsLeft, matchedPointsRight);
-            % title('Traked features');
-
-
-
-            %% Estimate essential matrix
-            % FundamentalMatrix is precalculated and stimated by stereoParams_morning 
-
-            % % Estimate the fundamental matrix
-            % [E, epipolarInliers] = estimateEssentialMatrix(...
-            %     matchedPointsLeft, matchedPointsRight, stereoParams_morning.CameraParameters1, 'Confidence', 99.99);
-            % 
-            % % Find epipolar inliers
-            % inlierPoints1 = matchedPointsLeft(epipolarInliers, :);
-            % inlierPoints2 = matchedPointsRight(epipolarInliers, :);
-
-
-            %% Compute the camera Pose 	
-            % RotationOfCamera2 is done by stereoParams_morning
-            % TraslationOfCamera2 is done by stereoParams_morning
-
-            % [orient, loc] = relativeCameraPose(E, stereoParams_morning.CameraParameters1, inlierPoints1, inlierPoints2);
-
-            %% Reconstruct the 3D locations of matched Points	
-            % compute camera matrices for each position of the cameras	
-
-            %     if ~isempty(matchedPointsLeft) && ~isempty(matchedPointsRight) && ...
-            %         (size(matchedPointsLeft,1) == size(matchedPointsRight,1))
-            %     
-                    % visualize correspondance
-            %         figure
-            %         showMatchedFeatures(frameLeft, frameRight, matchedPointsLeft, matchedPointsRight);
-            %         title('Traked features');
-
-            % compute 3-D points
+            % Triangulate to compute 3D points
             points3D = triangulate(matchedPointsLeft, matchedPointsRight, ...
                                    camMatrixLeft, camMatrixRight);
 
             % Convert to meters and create a pointCloud object
-            % divide by 1000 scale and easily notice the osilation of the markers 
-            points3D = points3D ./1000;
-            
+            points3D = points3D ./1000; % Scale conversion
 
-            % Calulate angles when there are 7 markers only 
+            % Calculate angles for 7 markers setup
             if NUM_MARKERS == 7
-                
-                %% Turn Points3D into an array of dictiories        
-                [lbwt lfwt ltrc lkne lank lhee lteo] = GetArrayDicPoints3D(points3D);
+                % Convert Points3D into an array of dictionaries        
+                [lbwt, lfwt, ltrc, lkne, lank, lhee, lteo] = GetArrayDicPoints3D(points3D);
 
-                %% SavePoints3D - cooking data to be used in JsonEncode
+                % Save Points3D for JSON encoding
                 lbwt_x{idx_raw_data}= lbwt('x'); lbwt_y{idx_raw_data}= lbwt('y'); lbwt_z{idx_raw_data}= lbwt('z');
                 lfwt_x{idx_raw_data}= lfwt('x'); lfwt_y{idx_raw_data}= lfwt('y'); lfwt_z{idx_raw_data}= lfwt('z');
                 ltrc_x{idx_raw_data}= ltrc('x'); ltrc_y{idx_raw_data}= ltrc('y'); ltrc_z{idx_raw_data}= ltrc('z');
@@ -499,10 +337,10 @@ while iteFrames < endFrames
                 lhee_x{idx_raw_data}= lhee('x'); lhee_y{idx_raw_data}= lhee('y'); lhee_z{idx_raw_data}= lhee('z');
                 lteo_x{idx_raw_data}= lteo('x'); lteo_y{idx_raw_data}= lteo('y'); lteo_z{idx_raw_data}= lteo('z');
 
-
-
+                % Decode JSON for calculated angles in three planes
                 lstResThreePlanes = jsondecode(GetJsonOfCalculatedAnglesInThreePlanes(points3D));  
 
+                % Store calculated angles
                 sagittal_hip_ang(idx_raw_data) = lstResThreePlanes.S_ANG_HIP;
                 sagittal_plv_ang(idx_raw_data) = lstResThreePlanes.S_ANG_PEL;
                 sagittal_kne_ang(idx_raw_data) = lstResThreePlanes.S_ANG_KNE;
@@ -516,10 +354,7 @@ while iteFrames < endFrames
                 transversal_kne_ang(idx_raw_data) = lstResThreePlanes.T_ANG_KNE;
                 transversal_ank_ang(idx_raw_data) = lstResThreePlanes.T_ANG_ANK;
 
-                %  saving the previous angle allows to show the same angle
-                %  in the next position of idx_raw_data. The "Then clause"
-                %  include the previous angle saved in prev_S_ANG_HIP, for
-                %  example.
+                % Save previous angles for continuity in data
                 prev_S_ANG_HIP = lstResThreePlanes.S_ANG_HIP;
                 prev_S_ANG_PEL = lstResThreePlanes.S_ANG_PEL;
                 prev_S_ANG_KNE = lstResThreePlanes.S_ANG_KNE;
@@ -533,67 +368,44 @@ while iteFrames < endFrames
                 prev_T_ANG_KNE = lstResThreePlanes.T_ANG_KNE;
                 prev_T_ANG_ANK = lstResThreePlanes.T_ANG_ANK;
 
-                % if idx_raw_data > 30
+                % Encode kinematic data and marker positions to JSON
+                kinematicsAnalysisGaitAngles = ...
+                    jsonencode(table(sagittal_hip_ang, sagittal_plv_ang, ...
+                                     sagittal_kne_ang, sagittal_ank_ang, ...
+                                     frontal_hip_ang, frontal_plv_ang, ...
+                                     frontal_kne_ang, frontal_ank_ang, ...
+                                     transversal_hip_ang, transversal_plv_ang, ...
+                                     transversal_kne_ang, transversal_ank_ang));
 
-                    kinematicsAnalysisGaitAngles = ...
-                        jsonencode(table( ...
-                                        sagittal_hip_ang, ...
-                                        sagittal_plv_ang, ...
-                                        sagittal_kne_ang, ...
-                                        sagittal_ank_ang, ...
-                                        frontal_hip_ang, ...
-                                        frontal_plv_ang, ...
-                                        frontal_kne_ang, ...
-                                        frontal_ank_ang, ...
-                                        transversal_hip_ang, ...
-                                        transversal_plv_ang, ...
-                                        transversal_kne_ang, ...
-                                        transversal_ank_ang ...
-                                    ));
+                rawMarkersPositions = ...
+                    jsonencode(table(lbwt_x, lbwt_y, lbwt_z, ...
+                                     lfwt_x, lfwt_y, lfwt_z, ...
+                                     ltrc_x, ltrc_y, ltrc_z, ...
+                                     lkne_x, lkne_y, lkne_z, ...
+                                     lank_x, lank_y, lank_z, ...
+                                     lhee_x, lhee_y, lhee_z, ...
+                                     lteo_x, lteo_y, lteo_z));
 
-
-                    rawMarkersPositions = ...
-                        jsonencode(table(lbwt_x, lbwt_y, lbwt_z, ...
-                            lfwt_x, lfwt_y, lfwt_z, ...
-                            ltrc_x, ltrc_y, ltrc_z, ...
-                            lkne_x, lkne_y, lkne_z, ...
-                            lank_x, lank_y, lank_z, ...
-                            lhee_x, lhee_y, lhee_z, ...
-                            lteo_x, lteo_y, lteo_z));
-
-                    kinematicDataToServerAsJson = ...
-                        cookKinematicData(kinematicsAnalysisGaitAngles,rawMarkersPositions); 
-
-
-%                  call_put_method_from_onlineMatlab_NO_RESPONSE(kinematicDataToServerAsJson);
-                 % testPUTPUT(kinematicDataToServerAsJson);
-                 % kevin='luya';
+                kinematicDataToServerAsJson = ...
+                    cookKinematicData(kinematicsAnalysisGaitAngles, rawMarkersPositions); 
             end    
 
-
-
+            % Increment raw data index
             idx_raw_data = idx_raw_data +1; 
 
-            %% create the point cloud
+            %% Create and visualize the point cloud
             ptCloud = pointCloud(points3D);
-
-            % Visualize the point cloud / Update points
             view(player3D, ptCloud);
 
+            % Update plots for marker oscillation if enabled
             if OSCILATION
-                % subplot(3,1,1);
                 UpdatePlotOscilation(HX, PX, points3D(3,1), startTime,1);
-                % subplot(3,1,2);
                 UpdatePlotOscilation(HY, PY, points3D(3,2), startTime,2);
-                % subplot(3,1,3);
                 UpdatePlotOscilation(HZ, PZ, points3D(3,3), startTime,3);
-
             end
 
-        % if the number of makers is different, then save the 
-        % prev angles saved in prev_S_ANG_HIP, for instance.
         else
-
+            % If marker count mismatches, use previous angles
             sagittal_hip_ang(idx_raw_data) = prev_S_ANG_HIP;
             sagittal_plv_ang(idx_raw_data) = prev_S_ANG_PEL;
             sagittal_kne_ang(idx_raw_data) = prev_S_ANG_KNE;
@@ -607,189 +419,110 @@ while iteFrames < endFrames
             transversal_kne_ang(idx_raw_data) = prev_T_ANG_KNE;
             transversal_ank_ang(idx_raw_data) = prev_T_ANG_ANK;
 
+            % Increment raw data index
             idx_raw_data = idx_raw_data +1; 
-            %         end
-
         end
-
     end
 
-
-    % Display the frame.
+    % Display binary frames
     step(player_left, frameLeftBinary);
     step(player_right, frameRightBinary);
-   
-    
-    
-    
-    % gl = frameLeft(:,:,2) -50;
-    % br = frameRight(:,:,3);
-    %  step(player_left, gl);
-    %  step(player_right, gl + br);
-    
 
-     % step(player_left, frameLeft + frameRight);
-     % step(player_right, frameRight);
-
-
-
+    % Increment frame counter
     iteFrames = iteFrames + 1;
 end
 
-% To send left kinematic gait analysis follow this:
-%  Before sending kinematicDataToServerAsJson through POSTMAN,
-%  It is neccesary to remove cotation marks added by mathlab ('<<json>>')
-
-%      SaveTxtFile(countLeft,countRight);
-%     PlotBlinks(countLeft,countRight);
-
-%  Clean up.
+% Clean up by resetting video players
 reset(player_left);
 reset(player_right);
 
 %% Oscilation Plot function (x,y,z)
-
-function [H P] = InitPlotOscilation(L_I, L_S,TITLE)
-
+% Initializes plot for oscillation visualization
+function [H, P] = InitPlotOscilation(L_I, L_S, TITLE)
     figure
-    h = animatedline;
-    px = gca;
-    px.YGrid = 'on';
-    px.YLim = [L_I L_S];
-    title(TITLE);
-    xlabel('num frames');
-    ylabel('meters');
+    h = animatedline; % Create an animated line
+    px = gca; % Get current axis
+    px.YGrid = 'on'; % Enable Y grid
+    px.YLim = [L_I, L_S]; % Set Y limits
+    title(TITLE); % Set plot title
+    xlabel('num frames'); % Label X-axis
+    ylabel('meters'); % Label Y-axis
     
-    H = h;
-    P = px;
+    H = h; % Return handle to animated line
+    P = px; % Return handle to plot
 end
 
-function UpdatePlotOscilation(H, P, PTCLOUD, STARTIME,POS_POT)
-        
-        % subplot(3,1,POS_POT);
-        % Get current time
-        t =  datetime('now') - STARTIME;
-        pos = double(PTCLOUD);
-        % Add points to animation
-        addpoints(H,datenum(t),pos);
-        % Update axes
-        P.XLim = datenum([t-seconds(15) t]);
-        datetick('x','keeplimits')
-        drawnow
-        
+% Updates oscillation plot with new data
+function UpdatePlotOscilation(H, P, PTCLOUD, STARTIME, POS_POT)
+    t = datetime('now') - STARTIME; % Calculate elapsed time
+    pos = double(PTCLOUD); % Convert position to double
+    addpoints(H, datenum(t), pos); % Add new point to animated line
+    P.XLim = datenum([t-seconds(15), t]); % Update X-axis limits
+    datetick('x', 'keeplimits') % Keep limits while updating ticks
+    drawnow % Force drawing of graphics
 end
 
-%% Makers traking
-function [medFiltImage binaryImage] = DetectMarkers_BackgroundSubtraction(backgroundLeft,frameLeft,BINARY_THRES)
+%% Marker tracking using background subtraction
+function [medFiltImage, binaryImage] = DetectMarkers_BackgroundSubtraction(backgroundLeft, frameLeft, BINARY_THRES)
+    [BackgroundLeft_hsv] = round(rgb2hsv(backgroundLeft)); % Convert background to HSV
+    [FrameLeft_hsv] = round(rgb2hsv(frameLeft)); % Convert frame to HSV
     
+    Out = bitxor(BackgroundLeft_hsv, FrameLeft_hsv); % XOR to find differences
+    subplot(2, 2, 1), imshow(Out), title('diff - bitxor');
+    
+    Out = rgb2gray(Out); % Convert to grayscale
+    subplot(2, 2, 2), imshow(Out), title('diff Gray scale');
+    
+    [rows, columns] = size(Out); % Get image dimensions
 
-    %   Convert RGB 2 HSV Color conversion
-    [BackgroundLeft_hsv]=round(rgb2hsv(backgroundLeft));
-    [FrameLeft_hsv]=round(rgb2hsv(frameLeft));
-    
-    Out = bitxor(BackgroundLeft_hsv,FrameLeft_hsv);
-        subplot(2,2,1), imshow(Out), title('diff - bitxor');
-    
-    % Out = imgaussfilt(Out, 3);
-
-    Out = rgb2gray(Out);
-        subplot(2,2,2), imshow(Out), title('diff Gray scale');
-    
-    %Read Rows and Columns of the Image
-    [rows columns]=size(Out);
-
-    %Convert to Binary Image
-    for i=1:rows
-        for j=1:columns
-            if Out(i,j) > BINARY_THRES
-                binaryImage(i,j)=1;
+    % Convert to binary image based on threshold
+    for i = 1:rows
+        for j = 1:columns
+            if Out(i, j) > BINARY_THRES
+                binaryImage(i, j) = 1;
             else
-                binaryImage(i,j)=0;
+                binaryImage(i, j) = 0;
             end
         end
     end
-        subplot(2,2,3), imshow(binaryImage), title('binaryImage');
-      
-    %Apply Median filter to remove Noise
-    %     FilteredImage=medfilt2(binaryImage,[5 5]);
-    % s = [0 0 0; 0 1 0; 0 0 0];
-    % FilteredImage = conv2(binaryImage, s);
-    %     subplot(2,2,4), imshow(medfilt2(FilteredImage)), title('FilteredImage');
-
-    %    title('L         Original Image         R');
-
-    medFiltImage = medfilt2(binaryImage);
-    % medFiltImage = medfilt2(binaryImage,[15 15]);
-        subplot(2,2,4), imshow(medFiltImage), title('MedFilteredImage');
-
-end
-   
-function img = Gaussianfilter(FILENAME)
-    % I = gpuArray(imread(FILENAME));
-    I = FILENAME;
-    Iblur = imgaussfilt(I, 6);
+    subplot(2, 2, 3), imshow(binaryImage), title('binaryImage');
     
-    subplot(1,2,1), imshow(I), title('Original Image');
+    medFiltImage = medfilt2(binaryImage); % Apply median filter
+    subplot(2, 2, 4), imshow(medFiltImage), title('MedFilteredImage');
+end
 
-    subplot(1,2,2), imshow(Iblur)
+% Applies Gaussian filter to an image
+function img = Gaussianfilter(FILENAME)
+    I = FILENAME; % Use input image
+    Iblur = imgaussfilt(I, 6); % Apply Gaussian filter
+    
+    subplot(1, 2, 1), imshow(I), title('Original Image');
+    subplot(1, 2, 2), imshow(Iblur)
     title('Gaussian filtered image, \sigma = 1')
     
-  
-    
-    img = Iblur;
+    img = Iblur; % Return filtered image
 end
 
-function matchedPoints = DetectFeaturedPoints_DummyVersion_Sum_X_Y(I1,THRESH,MIN_AREA,MAX_AREA)
-  % Segmentation with a threshold by KEVIN
-    % Convert to binary images depending on a threshold
-    GI1 = rgb2gray(I1);
-    % GI2 = rgb2gray(I2);
-    thresh = THRESH;
-    BW1_TH = GI1 > thresh ;
-    % BW2_TH = GI2 > thresh ;
+% Dummy version of feature point detection
+function matchedPoints = DetectFeaturedPoints_DummyVersion_Sum_X_Y(I1, THRESH, MIN_AREA, MAX_AREA)
+    GI1 = rgb2gray(I1); % Convert to grayscale
+    BW1_TH = GI1 > THRESH; % Apply threshold
 
-    % detect blobs from BW1_TH
-    BW1 = bwconncomp(BW1_TH); 
-    stats = regionprops(BW1, 'Area','Eccentricity'); 
+    BW1 = bwconncomp(BW1_TH); % Find connected components
+    stats = regionprops(BW1, 'Area', 'Eccentricity'); % Get properties
     outOfPhase = find([stats.Area] > MIN_AREA & [stats.Area] < MAX_AREA); 
-    BW1_BLOB = ismember(labelmatrix(BW1), outOfPhase);
-    % detect blobs from BW2_TH
-    % BW2 = bwconncomp(BW2_TH); 
-    % stats = regionprops(BW2, 'Area','Eccentricity'); 
-    % outOfPhase = find([stats.Area] > 100); 
-    % BW2_BLOB = ismember(labelmatrix(BW2), outOfPhase);
+    BW1_BLOB = ismember(labelmatrix(BW1), outOfPhase); % Filter blobs
 
-    % ploting binary images
-    % imshowpair(BW1_BLOB,BW2_BLOB,'montage');
+    CC1 = regionprops(BW1_BLOB, 'centroid'); % Find centroids
+    matchedPoints = single(cat(1, CC1.Centroid)); % Extract points
 
-    % Calculate centroids
-    CC1 = regionprops(BW1_BLOB,'centroid');
-    % CC2 = regionprops(BW2_BLOB,'centroid');
-
-    % Calculate both matched point
-    matchedPoints = single(cat(1,CC1.Centroid));
-    % matchedPoints1(:,3) = [];
-    % matchedPoints2 = single(cat(1,CC2.Centroid));
-    % matchedPoints2(:,3) = [];
-    % 
-    % imshow(I1);
-    % hold on
-    % plot(matchedPoints(:,1),matchedPoints(:,2),'b*');
-    % hold off
-    % 
-    % imshow(I2);
-    % hold on
-    % plot(matchedPoints2(:,1),matchedPoints2(:,2),'b+');
-    % hold off
-
-
+    % Sort points by sum of X and Y values
     if length(matchedPoints) > 1
-        % asendent sort by the sim of its X and Y values
-        [rows, columns] = size(matchedPoints);
+        [rows, ~] = size(matchedPoints);
         tempMat = [];
         for i = 1:rows
-            newRow = [(matchedPoints(i,1) + matchedPoints(i,2)) matchedPoints(i,1) matchedPoints(i,2)];
-            tempMat = cat(1, tempMat, newRow); 
+            newRow = [(matchedPoints(i, 1) + matchedPoints(i, 2)), matchedPoints(i, 1), matchedPoints(i, 2)];
+            tempMat = cat(1, tempMat, newRow);
         end
 
         out = sortrows(tempMat);
@@ -798,279 +531,145 @@ function matchedPoints = DetectFeaturedPoints_DummyVersion_Sum_X_Y(I1,THRESH,MIN
     end
 end
 
-function [conv2Img BinaryImage markerPoints] = ExtractPositions(I1,THRESH_MIN,THRESH_MAX,MIN_AREA,MAX_AREA)
-
+function [conv2Img BinaryImage markerPoints] =ExtractPositions(I1, THRESH_MIN, THRESH_MAX, MIN_AREA, MAX_AREA)
     figure
     subplot(2,3,1), imshow(I1), title('color img');
     
-    % Convert to binary images depending on a threshold
+    % Convert to grayscale
     GI1 = rgb2gray(I1);
     subplot(2,3,2), imshow(GI1), title('gray img');
     
-    %Apply Median filter to remove Noise
-    % GI1 = medfilt2(GI1,[3 3]);
+    % Apply convolution to highlight features
     s = [-1.0  -1.0  -1.0; 
          -1.0  8.0  -1.0; 
          -1.0  -1.0  -1.0];
-    conv2Img = conv2(GI1, s);
+    conv2Img = conv2(GI1, s, 'same');
     
     subplot(2,3,3), imshow(conv2Img), title('conv2 img');
-    GI1 = conv2Img;
-    thresh_min = THRESH_MIN;
-    thresh_max = THRESH_MAX;
-    BW1_TH = thresh_min < GI1;
-    subplot(2,3,4), imshow(BW1_TH), title('thresh_min img');
-
-    %Apply Median filter to remove Noise
-    %     MedFilt_BLOB = medfilt2(BW1_TH,[5 5]);
-        
-    % figure
-    % imshowpair(GI1,BW1_TH,'montage');
-    % title('L         Undistorted Images         R');
-    % detect blobs from BW1_TH
-    BW1 = bwconncomp(BW1_TH); 
-    %     subplot(2,3,5), imshow(BW1), title('bwconncomp');
     
-    stats = regionprops(BW1, 'Area','Eccentricity'); 
+    % Apply threshold
+    BW1_TH = conv2Img > THRESH_MIN & conv2Img < THRESH_MAX;
+    subplot(2,3,4), imshow(BW1_TH), title('Thresholded Image');
+    
+    % Detect connected components
+    BW1 = bwconncomp(BW1_TH); 
+    
+    % Filter blobs by area
+    stats = regionprops(BW1, 'Area', 'Eccentricity'); 
     outOfPhase = find([stats.Area] > MIN_AREA & [stats.Area] < MAX_AREA); 
     BW1_BLOB = ismember(labelmatrix(BW1), outOfPhase);
-    subplot(2,3,6), imshow(BW1_BLOB), title('ismember img');
-
-    % Calculate centroids
-    CC1 = regionprops(BW1_BLOB,'centroid');
-
-    % return binary image and list of marker positions
+    subplot(2,3,6), imshow(BW1_BLOB), title('Filtered Blobs');
+    
+    % Calculate centroids of filtered blobs
+    CC1 = regionprops(BW1_BLOB, 'centroid');
+    
+    % Return binary image and marker positions
     BinaryImage = BW1_BLOB;
-    markerPoints = single(cat(1,CC1.Centroid));
+    markerPoints = single(cat(1, CC1.Centroid));
 end
 
+% Applies a custom technique for image processing
 function res = myTechnique(RGB)
-   
-%     figure
-%     RGB = imread('./visionData/removeBackground/toCalibrate02.jpg');
-%     RGB = imread('./visionData/removeBackground/green_01.png');
-    % subplot(3,3,1), imshow(RGB), title('RGB');
-   
-    GAUS = imgaussfilt(RGB,2);
+    GAUS = imgaussfilt(RGB, 2); % Apply Gaussian filter
     
-    % subplot(3,3,2), imshow(GAUS), title('GAUS');
-   
-    imjt = imadjust(GAUS,[.5 .4 0; .6 .7 1],[]);
-    % subplot(3,3,3), imshow(imjt), title('imadjust');
-     
-    HSV = rgb2hsv(imjt);
-    hsv(:,:,1) = ones(720,1280);
-    hsv(:,:,2) = HSV(:,:,2)
-    hsv(:,:,3) = ones(720,1280);
-    % subplot(3,3,4), imshow(hsv(:,:,2)), title('HSV_V');
-
-    RGB2 = hsv2rgb(hsv);
-    % subplot(3,3,5), imshow(RGB2), title('RGB2 from hsv(fomated)');
+    imjt = imadjust(GAUS, [.5 .4 0; .6 .7 1], []); % Adjust image intensity
     
-    gray = rgb2gray(RGB2);
-    % subplot(3,3,6), imshow(gray), title('gray');
+    HSV = rgb2hsv(imjt); % Convert to HSV
+    hsv(:,:,1) = ones(720, 1280);
+    hsv(:,:,2) = HSV(:,:,2);
+    hsv(:,:,3) = ones(720, 1280);
     
-    sharpen = imsharpen(gray);
-    % subplot(3,3,7), imshow(sharpen), title('sharpen')
+    RGB2 = hsv2rgb(hsv); % Convert back to RGB
     
-    markers = sharpen > 0.5 ;
-    % subplot(3,3,8), imshow(markers), title('markers');  
-
-    bw = imbinarize(sharpen);
-    % subplot(3,3,9), imshow(bw), title('imbin');
-
-    res = bw ;
-
+    gray = rgb2gray(RGB2); % Convert to grayscale
+    
+    sharpen = imsharpen(gray); % Sharpen image
+    
+    markers = sharpen > 0.5; % Threshold to get markers
+    
+    bw = imbinarize(sharpen); % Binarize image
+    
+    res = bw; % Return result
 end
 
-function res =  testPaperTechnique(RGB)
-   
-%     figure
-%     RGB = imread('./visionData/removeBackground/toCalibrate02.jpg');
-%     RGB = imread('./visionData/removeBackground/green_01.png');
-    subplot(3,3,1), imshow(RGB), title('RGB');
+function [markerImage, markerPoints] = TestKernels(I1, THRESH_MIN, SURGE_MEAN_AREA, TOP_LIM, BOT_LIM, LEF_LIM, RIG_LIM)
+    % Define kernel matrices for image processing
+    outline = [-1.0, -1.0, -1.0; 
+               -1.0,  8.0, -1.0; 
+               -1.0, -1.0, -1.0];
 
-    HSV = rgb2hsv(RGB)
-    subplot(3,3,2), imshow(HSV), title('HSV');
-   
-    GAUS = imgaussfilt(HSV,2);
-    subplot(3,3,3), imshow(GAUS), title('GAUS');
-    
-    imjt = imadjust(GAUS,[.5 .4 0; .6 .7 1],[]);
-    subplot(3,3,4), imshow(imjt), title('imadjust');
-    
-    gray = rgb2gray(imjt);
-    subplot(3,3,5), imshow(gray), title('gray');
-    
-    sharpen = imsharpen(gray);
-    subplot(3,3,6), imshow(sharpen), title('sharpen');
-    
-%     stretchlimt= imadjust(RGB,stretchlim(RGB),[.01 .5]);
-% %     subplot(2,2,2), imshow(stretchlimt), title('stretchlimt');
-% 
-%     imjst2= imadjust(RGB,[.5 .4 0; .6 .7 1],[]);
-%     imSum =   imgaussfilt(imjst2,2) + stretchlimt;
-%     gray2 = rgb2gray(imSum);
-%     subplot(2,2,2), imshow(gray2),title('sum_gay');   
-%     
-%     subplot(2,2,3), imshow(~imbinarize(gray2)), title('bin from sum');
-%     
-    bw = ~imbinarize(sharpen);
-    subplot(3,3,7), imshow(bw), title('imbin');
+    blur = [0.0625, 0.125, 0.0625; 
+            0.125,   0.25,  0.125; 
+            0.0625, 0.125, 0.0625];
 
-    res = bw ;
+    sharpen = [0.0, -1.0,  0.0; 
+              -1.0,  7.0, -1.0; 
+               0.0, -1.0,  0.0];
 
-end
+    % Convert image to grayscale and apply threshold
+    BW1_TH = THRESH_MIN < rgb2gray(I1);
 
-function [markerImage markerPoints] = TestKernels(I1,THRESH_MIN,SURGE_MEAN_AREA, TOP_LIM, BOT_LIM, LEF_LIM, RIG_LIM)
-    outline = [ -1.0  -1.0  -1.0; 
-                -1.0   8.0  -1.0; 
-                -1.0  -1.0  -1.0  ];
+    % Detect connected components based on the thresholded image
+    BW1 = bwconncomp(BW1_TH);
 
-    blur    = [ 0.0625  0.125  0.0625; 
-                0.125   0.25   0.125; 
-                0.0625  0.125  0.0625  ];
-
-    sharpen = [ 0.0  -1.0   0.0; 
-               -1.0   7.0  -1.0; 
-                0.0  -1.0   0.0  ];
-  
-
-%         I1 = imgaussfilt(I1, 0.3); 
-        
-          
-    %     figure
-    %     subplot(2,3,1), imshow(I1), title('color img');
-        
-        % Convert to binary images depending on a threshold
-%     GI1 = rgb2gray(I1); 
-    %     subplot(2,3,2), imshow(GI1), title('gray img');
-        
-    %     thresh_min = THRESH_MIN;
-    %     thresh_max = THRESH_MAX;
-%         r=I1(:,:,1);
-%         g=I1(:,:,2);
-%         b=I1(:,:,3);
-%         % img = THRESH_MIN < g;
-%         whiteImage = 255 * ones(720,1280, 'uint8');
-%         img = whiteImage - (r.*((4.*r)-(1.2.*b)));
-%         imshow(img) 
-   
-%     imshow(isgreen)
-%     BW1_TH = uint8(255 * isgreen);
-%     BW1_TH = myTechnique(I1);
-%     imshow(BW1_TH)
-
-     % BW1_TH = thresh_min < img ; % green channel
-    BW1_TH = THRESH_MIN < rgb2gray(I1) ;
-%         subplot(2,3,3), imshow(BW1_TH), title('thresh_min img');
-        
-    %     BW1_TH = im2uint8(BW1_TH);
-    %     %Applying kernels
-    %     
-    %     outline_img = conv2(BW1_TH, outline);
-    %     subplot(2,3,4), imshow(outline_img), title('outline_img');
-    %     
-    %     blur_img = conv2(BW1_TH, blur);
-    %     subplot(2,3,5), imshow(blur_img), title('blur_img');
-    %     
-    %     sharpen_img = conv2(BW1_TH, sharpen);
-    %     subplot(2,3,6), imshow(sharpen_img), title('sharpen_img');
-    %     
-    %     GI1 = conv2Img;
-    %     Rmin =5;
-    %     Rmax = 300;
-    %     [centersBright, radiiBright] = imfindcircles(BW1_TH,[Rmin Rmax],'ObjectPolarity','bright');
-
-      %Apply Median filter to remove Noise
-    %     MedFilt_BLOB = medfilt2(BW1_TH,[5 5]);
-
-    %     subplot(2,3,4), imshow(MedFilt_BLOB), title('MedFilt_BLOB');
-        
-    % figure
-    % imshowpair(GI1,BW1_TH,'montage');
-    % title('L         Undistorted Images         R');
-
-    % detect blobs from BW1_TH
-    BW1 = bwconncomp(BW1_TH); 
-    %     subplot(2,3,5), imshow(BW1), title('bwconncomp');
-    
+    % Initialize an empty array for blob IDs
     ids = [];
-    stats = regionprops(BW1, 'Area','Eccentricity'); 
-    if not (size(stats,1) < 4 )
-        mean_area =  mean([stats.Area]);
+    % Calculate properties of connected components
+    stats = regionprops(BW1, 'Area', 'Eccentricity');
+    if not (size(stats, 1) < 4)
+        % Calculate mean area of blobs
+        mean_area = mean([stats.Area]);
+        % Find blobs larger than a surge mean area
         ids = find([stats.Area] > mean_area * SURGE_MEAN_AREA);
-        
-        % if one blob is romoved by it smallness
+
+        % If one blob is removed due to its smallness, adjust the criteria
         if (size(ids) < 3)
-            sort_stats = table2struct(sortrows(struct2table(stats),'Area','descend'));
-            min_area = sort_stats(3,1).Area;
+            sort_stats = table2struct(sortrows(struct2table(stats), 'Area', 'descend'));
+            min_area = sort_stats(3, 1).Area;
             ids = find([stats.Area] >= min_area);
         end
-        
-    elseif (size(stats,1) == 3)   % if there are 3 blobs aready   
-        ids = [1;2;3];
+    elseif (size(stats, 1) == 3) % If there are exactly 3 blobs
+        ids = [1; 2; 3];
     end
-    
-    % ids = find([stats.Area] > 70); 
-    
-     marker_blobs = ismember(labelmatrix(BW1), ids);
-%    imshow(marker_blobs)
-    %     subplot(2,3,6), imshow(marker_blobs), title('makerblobs img');
-    %    
-    %     
-        % Calculate centroids
-    CC1 = regionprops(marker_blobs,'centroid');
 
-    % return marker binary image and  the list of marker positions
+    % Filter blobs based on identified IDs
+    marker_blobs = ismember(labelmatrix(BW1), ids);
+
+    % Calculate centroids of the filtered blobs
+    CC1 = regionprops(marker_blobs, 'centroid');
+
+    % Return binary image of marker blobs and their centroids
     markerImage = marker_blobs;
-    markerPoints = single(cat(1,CC1.Centroid));
-   
-    % markerPointsIsideArea = [];
-    
-    % length = size(markerPoints,1);
-    % id = 1;
-    % if length > 0
-    %     for i=1:length
-    %         % if markerPoints(i,2) >  TOP_LIM && ...
-    %         %    markerPoints(i,2) <  BOT_LIM && ...
-    %         %    markerPoints(i,1) >  LEF_LIM && ...
-    %         %    markerPoints(i,1) <  RIG_LIM
-    %         if ~(markerPoints(i,1) >  810 && ...
-    %             markerPoints(i,2) >  670 )
-    %             markerPointsIsideArea(id,:) = markerPoints(i,:);
-    %             id = id + 1;
-    %         end
-    %     end
-    % end
-    % markerPoints = markerPointsIsideArea;
+    markerPoints = single(cat(1, CC1.Centroid));
 end
 
-function trackedPoints = ExtractMarkersPosXY(IMAGE,SURGE_MEAN_AREA)
-
-    % figure
-    % imshowpair(GI1,BW1_TH,'montage');
-    % title('L         Undistorted Images         R');
-    % detect blobs from BW1_TH
-    BW1 = bwconncomp(IMAGE); 
-    stats = regionprops(BW1, 'Area','Eccentricity'); 
-    mean_area =  mean([stats.Area]); 
-    ids = find([stats.Area] > mean_area * SURGE_MEAN_AREA)
-    ids = find([stats.Area] < mean_area * (1+(1-SURGE_MEAN_AREA))); 
+function trackedPoints = ExtractMarkersPosXY(IMAGE, SURGE_MEAN_AREA)
+    % Detect connected components from the binary image
+    BW1 = bwconncomp(IMAGE);
+    % Calculate properties of connected components
+    stats = regionprops(BW1, 'Area', 'Eccentricity');
+    % Calculate mean area of blobs
+    mean_area = mean([stats.Area]);
+    % Find blobs larger than a surge mean area and smaller than a threshold
+    ids = find([stats.Area] > mean_area * SURGE_MEAN_AREA);
+    ids = find([stats.Area] < mean_area * (1 + (1 - SURGE_MEAN_AREA)));
+    % Filter blobs based on identified IDs
     blobs = ismember(labelmatrix(BW1), ids);
-    
-    % Calculate centroids
-    CC1 = regionprops(blobs,'centroid');
 
-    % return list of markers
-    trackedPoints = single(cat(1,CC1.Centroid));
+    % Calculate centroids of the filtered blobs
+    CC1 = regionprops(blobs, 'centroid');
+
+    % Return list of centroids of the tracked markers
+    trackedPoints = single(cat(1, CC1.Centroid));
 end
 
 %% Marker sorts
+
 function sortList = AscendentSort_SumOfAxisValues(MARKER_POINTS)
+    % Check if there are more than one marker point
     if length(MARKER_POINTS) > 1
-        % asendent sort by the sim of its X and Y values
-        [rows, columns] = size(MARKER_POINTS);
+        % Ascending sort by the sum of X and Y values
+        [rows, ~] = size(MARKER_POINTS);
         tempMat = [];
         for i = 1:rows
             newRow = [(MARKER_POINTS(i,1) + MARKER_POINTS(i,2)) ...
@@ -1079,411 +678,307 @@ function sortList = AscendentSort_SumOfAxisValues(MARKER_POINTS)
             tempMat = cat(1, tempMat, newRow); 
         end
 
-        out = sortrows(tempMat);
-        out(:,1) =[];
-        sortList = out;    
+        out = sortrows(tempMat); % Sort rows based on the sum
+        out(:,1) =[]; % Remove the sum column
+        sortList = out; % Return the sorted list    
     end
 end
 
 function sortList = DescendSort_YAxisValues(MARKER_POINTS)
+    % Check if there are more than two marker points
     if length(MARKER_POINTS) > 2
-        % asendent by Y-axis  values
+        % Descending sort by Y-axis values
         sortList = sortrows(MARKER_POINTS,-2); 
-        
     end
 end
 
-%% Labe markers
+%% Label markers
 function labeledMarkers = LabelMarkers2DImages_7(SORTED_LIST_Y, IS_LEFT)
+    % Label the last three markers: CALCANIUM, FOOT, and MALLEOLE EXTERN
 
-    % Working with the last three markers from the list, been basically the
-    % CALCANIUM, FOOT, and MALLEOLE EXTERN (not necessarily sorted), allow us
-    % to label them in "labeledMarkers".  
-    
-    
-    matSum =[]; 
-    % Calculating the distance between the three markers in mention and
-    % storing them in "matSum"
+    matSum = []; 
+    % Calculate the distance between the three markers and store in matSum
     for i = 1:3
         sumDist = 0;
-        for j=1:3
+        for j = 1:3
             if i ~= j
-            dist = sqrt( ((SORTED_LIST_Y(i,1) - SORTED_LIST_Y(j,1)) .^ 2) + ((SORTED_LIST_Y(i,2) - SORTED_LIST_Y(j,2)) .^ 2) );
-            sumDist = sumDist + dist; 
+                dist = sqrt(((SORTED_LIST_Y(i,1) - SORTED_LIST_Y(j,1)) ^ 2) + ...
+                            ((SORTED_LIST_Y(i,2) - SORTED_LIST_Y(j,2)) ^ 2));
+                sumDist = sumDist + dist; 
             end
         end
         newRow = [i, sumDist];
-
         matSum = cat(1, matSum, newRow);
     end
     
-    % sorting "matSum" decendently, allow us to know that the grater value
-    % belongs to the FOOT, the intermiedian value to the MALLEOLE EXTERN
-    % and the last to the CALCANIUM.
+    % Sort matSum to identify markers based on distance
     matSumOrdered = sortrows(matSum,-2);
 
-    % Copying the sort list to a temporal list 
-     temList = SORTED_LIST_Y;
+    % Copy SORTED_LIST_Y to a temporary list
+    temList = SORTED_LIST_Y;
      
-    % "matSum" stored <<[id_marker, sumDistance]>>, so by using "id_marker"       
-    % as an index on "testList" and putting them back to the original list 
-    % will allow us to know that label they are. 
+    % Assign labels based on distance
+    % Highest sum: FOOT MARKER
+    SORTED_LIST_Y(1,:) = temList(matSumOrdered(1,1), :);
+    % Intermediate sum: CALCANIUM MARKER
+    SORTED_LIST_Y(2,:) = temList(matSumOrdered(2,1), :);
+    % Lowest sum: MALLEOLE MARKER
+    SORTED_LIST_Y(3,:) = temList(matSumOrdered(3,1), :);
     
-    % the HIGHEST SUM represents the FOOT MARKER
-    SORTED_LIST_Y(1,:) = temList( matSumOrdered(1,1), :);
- 
-    % the INTERMEDIUM SUM represents the CALCANIUM MARKER
-    SORTED_LIST_Y(2,:) = temList( matSumOrdered(2,1), :);
+    % KNEE and TROCHANTER are already correctly positioned by y-axis order
     
-    % the LOWEST SUM represents the MALLEOLE MARKER
-    SORTED_LIST_Y(3,:) = temList( matSumOrdered(3,1), :);
-    
-    
-    % To label the KNEE, the sorted list did that job for us, for it is
-    % ordered in terms of y-axis.
-    % SORTED_LIST_Y(4,:) = SORTED_LIST_Y(4,:)
-    
-    % Likewise, the TROCHANTER is in the right place already.
-    % SORTED_LIST_Y(5,:) = SORTED_LIST_Y(5,:)  
-
-    % the ANTERIOR SUPERIOR ILIAC SPINE CREST and
-    % the POSTERIOR SUPERIOR ILLIAC SPINE CREST, let's comapare it X values  
+    % Compare X values for ASIS and PSIS
     if SORTED_LIST_Y(6,1) > SORTED_LIST_Y(7,1)
-        % 6 is grater then 7
         if IS_LEFT
+            % Swap if left side
             SORTED_LIST_Y(6,1) = temList(7,1); % ASIS
             SORTED_LIST_Y(7,1) = temList(6,1); % PSIS
         else
+            % Keep order if right side
             SORTED_LIST_Y(6,1) = temList(6,1); % ASIS
             SORTED_LIST_Y(7,1) = temList(7,1); % PSIS
         end
     else
-        % 7 is grates than 6
         if IS_LEFT
+            % Keep order if left side
             SORTED_LIST_Y(6,1) = temList(6,1); % ASIS
             SORTED_LIST_Y(7,1) = temList(7,1); % PSIS
         else
+            % Swap if right side
             SORTED_LIST_Y(6,1) = temList(7,1); % ASIS
-            SORTED_LIST_Y(7,1) = temList(6,1); % P
+            SORTED_LIST_Y(7,1) = temList(6,1); % PSIS
         end
     end
 
-    labeledMarkers = SORTED_LIST_Y;
+    labeledMarkers = SORTED_LIST_Y; % Return labeled markers
 end
 
 function labeledMarkers = LabelMarkers2DImages_9(SORTED_LIST_Y)
 
-    % Work with the last three markers of the list which are basically the
-    % ankle, feet, and malleole extern (not necessarily sorted)   
-    % calculate distance, in space, between the these markers
+    % This function labels the last three markers in the list, which
+    % represent the ankle, feet, and malleole extern. It calculates the
+    % distance in space between these markers to assist in labeling.
 
-    % a  = sqrt( ((SORTLIST(2,1) - SORTLIST(1,1)) .^ 2) + ((SORTLIST(2,2) - SORTLIST(1,2)) .^ 2) );
-    % b  = sqrt( ((SORTLIST(2,1) - SORTLIST(3,1)) .^ 2) + ((SORTLIST(2,2) - SORTLIST(3,2)) .^ 2) );
-    % c  = sqrt( ((SORTLIST(1,1) - SORTLIST(3,1)) .^ 2) + ((SORTLIST(1,2) - SORTLIST(3,2)) .^ 2) );
-     
-    % having the three distances, The algorithm must iterate each marker
-    % and sum the two distance calculated from the marker itself to the 
-    % other two markers left.
+    % Initialize matrix to store sum of distances for each marker
+    matSum = []; 
     
-    matSum =[]; 
-    
+    % Iterate through each of the last three markers
     for i = 1:3
-        sumDist = 0;
-        for j=1:3
+        sumDist = 0; % Initialize sum of distances for current marker
+        % Calculate distance from current marker to the other two
+        for j = 1:3
             if i ~= j
-            dist = sqrt( ((SORTED_LIST_Y(i,1) - SORTED_LIST_Y(j,1)) .^ 2) + ((SORTED_LIST_Y(i,2) - SORTED_LIST_Y(j,2)) .^ 2) );
-            sumDist = sumDist + dist; 
+                dist = sqrt(((SORTED_LIST_Y(i,1) - SORTED_LIST_Y(j,1)) ^ 2) + ...
+                            ((SORTED_LIST_Y(i,2) - SORTED_LIST_Y(j,2)) ^ 2));
+                sumDist = sumDist + dist; 
             end
         end
+        % Store marker index and its sum of distances
         newRow = [i, sumDist];
-
         matSum = cat(1, matSum, newRow);
     end
     
-    % descendet sort by its sum of dist
-    matSumOrdered = sortrows(matSum,-2);
+    % Sort markers by descending sum of distances
+    matSumOrdered = sortrows(matSum, -2);
 
-    % Copy sort list to a temporal list 
-     temList = SORTED_LIST_Y;
+    % Copy sorted list to a temporary list for manipulation
+    temList = SORTED_LIST_Y;
      
-    % Finally, put them back to the original list 
-    % then, the HIGHEST SUM is the FEET MARKER
-    SORTED_LIST_Y(1,:) = temList( matSumOrdered(1,1), :);
+    % Assign labels based on sorted sum of distances
+    % Highest sum indicates the FEET MARKER
+    SORTED_LIST_Y(1,:) = temList(matSumOrdered(1,1), :);
+    % Intermediate sum indicates the CALCANIUM MARKER
+    SORTED_LIST_Y(2,:) = temList(matSumOrdered(2,1), :);
+    % Lowest sum indicates the MALLEOLE MARKER
+    SORTED_LIST_Y(3,:) = temList(matSumOrdered(3,1), :);
     
-    % the last but no the least, 
-    % the INTERMEDIUM sum is the CALCANIUM MARKER
-    SORTED_LIST_Y(2,:) = temList( matSumOrdered(2,1), :);
-    
-    % likewise, the LOWEST sum is the MALLEOLE MARKER
-    SORTED_LIST_Y(3,:) = temList( matSumOrdered(3,1), :);
-    
+    % Additional markers between foot and hip are to be labeled considering
+    % the knee position for Thigh and Shank markers. The sorted list by
+    % y-axis assists in this labeling.
 
-    % TODO : label extra markers in this position after foot and before
-    % hip markers. Consider the knee postion in order to add Thigt and 
-    % shank markers
-    
-    % To label the SHANK, KNEE, THIGHT, the sorted list did that job 
-    % for us as it is
-    % ordered in terms of y-axis, likewise the TROCHANTER (placed down 
-    % for visibility purposes). The next in the list, starting from the
-    % end is the KNEE at 4th position, the TROCHANTER at 5th position.
-    
-    % To calcula the ANTERIOR ILIAC SPINE CREST and POSTERIOR SUPERIOR 
-    % ILLIAC CREST, let's comapare it X values  
+    % Compare X values to label ANTERIOR ILIAC SPINE CREST (ASIS) and
+    % POSTERIOR SUPERIOR ILIAC CREST (PSIS)
     if SORTED_LIST_Y(8,1) > SORTED_LIST_Y(9,1)
+        % Swap if necessary to correctly label ASIS and PSIS
         SORTED_LIST_Y(9,1) = temList(8,1);
         SORTED_LIST_Y(8,1) = temList(9,1);
     end
     
-    % and at 7nd postion will be located the POSTERIOR SUPERIOR ILLIAC
-    % CREST
+    % Return the labeled markers
     labeledMarkers = SORTED_LIST_Y;
 end
 
-%% Save 3D points to JSON FORMAT 
-function SavePoints3DToJsonFormatSample (POINT3D , idx_raw_data,lkne_x)
-  
-    % x = [40;43;
-    % y = [43;69];
-    % z = [10;41];
-
-    % jsonencode(table(x,y,z))
-    %  =   '[{"x":"40","y":43, "z":10},{"x":"43","y":69, "z":41}]'
-
-end
 
 %% Methods that turn 3DPoints into dictionaries
 function newMapDicPoint3D = GetDicPoint3D(POINT3D)
+    % Converts a 3D point into a dictionary with keys 'x', 'y', 'z'.
+    % POINT3D: A 1x3 vector representing a 3D point.
+    % Returns a dictionary mapping 'x', 'y', 'z' to their respective values.
 
-    % cm = CMarker3D;
-    [m n] = size(POINT3D);
-    keySet   = {'x','y','z'};
+    [m, n] = size(POINT3D); % Get size of POINT3D
+    keySet = {'x', 'y', 'z'}; % Define keys for the dictionary
 
     for i = 1:n
-        valueSet(i) = POINT3D(1,i)
+        valueSet(i) = POINT3D(1,i); % Assign values from POINT3D to valueSet
     end
-    newMapDicPoint3D = containers.Map(keySet,valueSet);
-
+    newMapDicPoint3D = containers.Map(keySet, valueSet); % Create dictionary
 end
 
-function [lbwt lfwt ltrc lkne lank lhee lteo] = GetArrayDicPoints3D(POINTS3D)
-    
-    lteo = GetDicPoint3D(POINTS3D(1,:));   
-    lhee = GetDicPoint3D(POINTS3D(2,:));
-    lank = GetDicPoint3D(POINTS3D(3,:));
-    lkne = GetDicPoint3D(POINTS3D(4,:));
-    ltrc = GetDicPoint3D(POINTS3D(5,:));
-    lfwt = GetDicPoint3D(POINTS3D(6,:));
-    lbwt = GetDicPoint3D(POINTS3D(7,:)); % lbwt( 1 , 1=x | 2=y | 3=z);
+function [lbwt, lfwt, ltrc, lkne, lank, lhee, lteo] = GetArrayDicPoints3D(POINTS3D)
+    % Converts an array of 3D points into dictionaries for each point.
+    % POINTS3D: A Nx3 matrix where each row represents a 3D point.
+    % Returns dictionaries for each anatomical landmark.
 
+    lteo = GetDicPoint3D(POINTS3D(1,:)); % Toe
+    lhee = GetDicPoint3D(POINTS3D(2,:)); % Heel
+    lank = GetDicPoint3D(POINTS3D(3,:)); % Ankle
+    lkne = GetDicPoint3D(POINTS3D(4,:)); % Knee
+    ltrc = GetDicPoint3D(POINTS3D(5,:)); % Thigh
+    lfwt = GetDicPoint3D(POINTS3D(6,:)); % Waist Front
+    lbwt = GetDicPoint3D(POINTS3D(7,:)); % Waist Back
 end
 
 %% Methods that calculate angles
-% function [ANG_HIP ANG_PEL ANG_KNE ANG_ANK] = GetJsonOfCalculatedAnglesInThreePlanes(POINTS3D)
 
-%    [lbwt lfwt ltrc lkne lank lhee lteo] = GetArrayDicPoints3D(POINTS3D);
-   
-%    ANG_HIP = CalculateHipAnglesSagittal(lbwt, lfwt, ltrc, lkne);
-%    ANG_PEL = CalculatePelvicAnglesSagittal(lbwt, lfwt);
-%    ANG_KNE = CalculateKneeAnglesSagittal(ltrc, lkne, lank);
-%    ANG_ANK = CalculateAnkleAnglesSagittal(lkne, lank, lhee, lteo);
-%    trop =32 ;
-%    % ... 
-
-% end
 function listResAngles = GetJsonOfCalculatedAnglesInThreePlanes(POINTS3D)
+    % Calculates various angles in sagittal, frontal, and transversal planes
+    % from given 3D points and encodes the results into a JSON string.
+    % POINTS3D: A Nx3 matrix of 3D points representing anatomical landmarks.
+    % Returns a JSON string of calculated angles in three planes.
 
-   [lbwt lfwt ltrc lkne lank lhee lteo] = GetArrayDicPoints3D(POINTS3D);
+    [lbwt, lfwt, ltrc, lkne, lank, lhee, lteo] = GetArrayDicPoints3D(POINTS3D);
 
-    % test Absolutte angles
-
-    % toHee = CalculateAbsoluteAngle(lhee, );
-    
-    % toAnk = CalculateAbsoluteAngle(lank, lteo);
-  
-    toKne = CalculateAbsoluteAngle(lkne, ltrc);
-
-
-
-    % x = lank('x');
-    % y = lank('y');
-    % z = lank('z');
-
-    % ank_hee = CalculateAbsoluteAngle(lank,lhee);
-    % ank_kne = CalculateAbsoluteAngle(lank,lkne);
-    % ank_toe = CalculateAbsoluteAngle(lank,lteo);
-
-    % =====================================================================
-   
+    % Calculate angles in sagittal plane
     S_ANG_HIP = CalculateHipAnglesSagittal(lbwt, lfwt, ltrc, lkne);
     S_ANG_PEL = CalculatePelvicAnglesSagittal(lbwt, lfwt);
     S_ANG_KNE = CalculateKneeAnglesSagittal(ltrc, lkne, lank);
     S_ANG_ANK = CalculateAnkleAnglesSagittal(lkne, lank, lhee, lteo);
 
-    F_ANG_HIP = CalculateHipAnglesSagittal(lbwt, lfwt, ltrc, lkne);
-    F_ANG_PEL = CalculatePelvicAnglesSagittal(lbwt, lfwt);
-    F_ANG_KNE = CalculateKneeAnglesSagittal(ltrc, lkne, lank);
-    F_ANG_ANK = CalculateAnkleAnglesSagittal(lkne, lank, lhee, lteo);
+    % Frontal and transversal angles are calculated but currently use
+    % sagittal calculations as placeholders
+    F_ANG_HIP = S_ANG_HIP;
+    F_ANG_PEL = S_ANG_PEL;
+    F_ANG_KNE = S_ANG_KNE;
+    F_ANG_ANK = S_ANG_ANK;
 
-    T_ANG_HIP = CalculateHipAnglesSagittal(lbwt, lfwt, ltrc, lkne);
-    T_ANG_PEL = CalculatePelvicAnglesSagittal(lbwt, lfwt);
-    T_ANG_KNE = CalculateKneeAnglesSagittal(ltrc, lkne, lank);
-    T_ANG_ANK = CalculateAnkleAnglesSagittal(lkne, lank, lhee, lteo);
+    T_ANG_HIP = S_ANG_HIP;
+    T_ANG_PEL = S_ANG_PEL;
+    T_ANG_KNE = S_ANG_KNE;
+    T_ANG_ANK = S_ANG_ANK;
 
-
-    listResAngles  = ...
-       jsonencode( ...
-           containers.Map( ...
-               {
-                    'S_ANG_HIP', ...
-                    'S_ANG_PEL', ...
-                    'S_ANG_KNE', ...
-                    'S_ANG_ANK', ...
-                    'F_ANG_HIP', ...
-                    'F_ANG_PEL', ...
-                    'F_ANG_KNE', ...
-                    'F_ANG_ANK', ...
-                    'T_ANG_HIP', ...
-                    'T_ANG_PEL', ...
-                    'T_ANG_KNE', ...
-                    'T_ANG_ANK', ...
-               }, ...
-               { ...
-                   S_ANG_HIP, ...
-                   S_ANG_PEL, ...
-                   S_ANG_KNE, ...
-                   S_ANG_ANK, ...
-                   F_ANG_HIP, ...
-                   F_ANG_PEL, ...
-                   F_ANG_KNE, ...
-                   F_ANG_ANK, ...
-                   T_ANG_HIP, ...
-                   T_ANG_PEL, ...
-                   T_ANG_KNE, ...
-                   T_ANG_ANK, ...
-               } ...
-           ) ...
-       );
-    trop =32 ;
-
+    % Encode angles into a JSON string
+    listResAngles = jsonencode(containers.Map({
+        'S_ANG_HIP', 'S_ANG_PEL', 'S_ANG_KNE', 'S_ANG_ANK',
+        'F_ANG_HIP', 'F_ANG_PEL', 'F_ANG_KNE', 'F_ANG_ANK',
+        'T_ANG_HIP', 'T_ANG_PEL', 'T_ANG_KNE', 'T_ANG_ANK'
+    }, {
+        S_ANG_HIP, S_ANG_PEL, S_ANG_KNE, S_ANG_ANK,
+        F_ANG_HIP, F_ANG_PEL, F_ANG_KNE, F_ANG_ANK,
+        T_ANG_HIP, T_ANG_PEL, T_ANG_KNE, T_ANG_ANK
+    }));
 end
 
 function ang = HCCalculateHipAnglesSagittal()
+    % Calculates hip angles in the sagittal plane using hardcoded vectors.
+    % Returns the calculated angle adjusted to represent the hip angle.
+
+    % Define vectors for top and bottom segments
     v_top = [10, 0] - [-10, 0];
     v_bott  = [0, -1] - [10, -1];
     
+    % Inverted vectors for alternative calculation (unused)
     v_topI = [-10, 0] - [10, 0];
     v_bottI  = [10, -1] - [0, -10];
     
+    % Calculate angles between vectors
     ang = CalculateAngles2Vectors(v_top, v_bott, 'Absolute');
-    angI = CalculateAngles2Vectors(v_topI, v_bottI, 'Absolute')
-    % check this FUNCTINNNNNNNNNNNNNNNNNNNN
-    ang = 90 - ang; % sin perpendicular to Eilic spain
-end
-
-function absAnglekevin = CalculateAbsoluteAngle(leftPoint,rightPoint)
-                                        %  Master   , slave
-
-    % Master point is the origin point where the angle is obtained
-    % Slave point is whaever point linked to master point to get
-    % the absolute angle. This is calculated thaking as a reference 
-    % an horizontal line.
-    % Check "CalculateAbsoluteAnglekevinVersion" method for better
-    % understanding
-
-    % calculation opposite cathetus
-    opp = rightPoint('y') - leftPoint('y');
-    % calculation adjacent cathetus
-    adj = rightPoint('x') - leftPoint('x');
-    % calculating arctan(opp/adj)
-    tethaRad = atan(opp/adj);
-    % result => absAngle
-    ang = RadToDeg(tethaRad);
-    absAngle = ang;
+    angI = CalculateAngles2Vectors(v_topI, v_bottI, 'Absolute'); % Unused
     
+    % Adjust angle to represent hip angle in sagittal plane
+    ang = 90 - ang; % Adjust for perpendicular to spine
+end
+function absAnglekevin = CalculateAbsoluteAngle(leftPoint,rightPoint)
+    % Calculates the absolute angle between two points with respect to a
+    % horizontal line. This function uses the 'CalculateAbsoluteAnglekevinVersion'
+    % for the actual calculation and returns the absolute angle.
+    %
+    % Parameters:
+    % leftPoint: The origin point (dictionary with 'x' and 'y' keys).
+    % rightPoint: The target point (dictionary with 'x' and 'y' keys).
+    %
+    % Returns:
+    % absAnglekevin: The absolute angle between the two points.
+
+    % Calculate opposite and adjacent sides of the triangle
+    opp = rightPoint('y') - leftPoint('y'); % Opposite side
+    adj = rightPoint('x') - leftPoint('x'); % Adjacent side
+    
+    % Calculate angle in radians
+    tethaRad = atan(opp/adj);
+    
+    % Convert radians to degrees
+    ang = RadToDeg(tethaRad);
+    
+    % Extract coordinates for direct method comparison
     x1 = leftPoint('x');
     y1 = leftPoint('y');    
     x2 = rightPoint('x');
     y2 = rightPoint('y');
 
-    % Raper as a test my method
-    [absAnglekevin angleNormal] = CalculateAbsoluteAnglekevinVersion(x1,y1,x2,y2);
-
-    % % Quadrant I => slope (-)
-    % if ang < 0 && y1 > y2
-    %     absAngle = -1 * ang; 
-
-    % % Quadrant II => slope (+)
-    % elseif ang > 0 && y1 > y2 
-    %     absAngle = 180 - ang;
-
-    % % Quadrant III  => slope (-)
-    % elseif ang < 0 && y1 < y2
-    %     absAngle = 180 + ang; 
-    
-    % % Quadrant IV => slope (+)
-    % elseif ang > 0 && y1 < y2 
-    %     absAngle = ang; 
-    % end
+    % Use the 'CalculateAbsoluteAnglekevinVersion' for calculation
+    [absAnglekevin, ~] = CalculateAbsoluteAnglekevinVersion(x1, y1, x2, y2);
 end
                                     
-function [absAnglekevin angleNormal] = CalculateAbsoluteAnglekevinVersion(x1,y1,x2,y2)
-                                                    %  Master, slave
-    % calculating opposite cathetus
-    opp = y2 - y1;
-    % calculating adjacent cathetus
-    adj = x2 - x1;
-    % calculating arctan(opp/adj)
-    tethaRad = atan((opp/adj));
-    % result => absAnglekevin
+function [absAnglekevin, angleNormal] = CalculateAbsoluteAnglekevinVersion(x1, y1, x2, y2)
+    % Calculates the absolute angle between two points considering the
+    % quadrant in which the angle is located. This method ensures correct
+    % angle calculation in all quadrants.
+    %
+    % Parameters:
+    % x1, y1: Coordinates of the first point (Master).
+    % x2, y2: Coordinates of the second point (Slave).
+    %
+    % Returns:
+    % absAnglekevin: The absolute angle considering the quadrant.
+    % angleNormal: The angle without quadrant consideration.
+
+    % Calculate opposite and adjacent sides of the triangle
+    opp = y2 - y1; % Opposite side
+    adj = x2 - x1; % Adjacent side
+    
+    % Calculate angle in radians and then convert to degrees
+    tethaRad = atan(opp/adj);
     ang = RadToDeg(tethaRad);
 
+    % Initial angle assignment
     angleNormal = ang;
     absAnglekevin = ang; 
 
-%                |
-%                |
-%            \   |   /
-%             \  |  /
-%          (+) \ | / (-)
-%      _________\|/_________
-%               /|\
-%          (-) / | \ (+)
-%             /  |  \ 
-%            /   |   \
-%                |
-%                |
-
-    % Quadrant I => slope (-)
+    % Adjust angle based on quadrant to ensure correctness
     if ang < 0 && y1 > y2
-        absAnglekevin = -1 * ang; 
-
-    % Quadrant II => slope (+)
+        absAnglekevin = -1 * ang; % Quadrant I
     elseif ang > 0 && y1 > y2 
-        absAnglekevin = 180 - ang;
-
-    % Quadrant III  => slope (-)
+        absAnglekevin = 180 - ang; % Quadrant II
     elseif ang < 0 && y1 < y2
-        absAnglekevin = 180 + ang; 
-    
-    % Quadrant IV => slope (+)
+        absAnglekevin = 180 + ang; % Quadrant III
     elseif ang > 0 && y1 < y2 
-        absAnglekevin = ang; 
+        absAnglekevin = ang; % Quadrant IV
     end
-
 end
 
 function angConv = RadToDeg(rad)
-    % Because of inverted cartesian plane (from computer perspective),
-    % raw pendient must be multiplied by (-1). From human perspective,
-    % this change makes sense.
-    % angConv = -1 * (rad * 180 / pi);
-    angConv = rad * 180 / pi;
+    % Converts radians to degrees.
+    %
+    % Parameters:
+    % rad: Angle in radians.
+    %
+    % Returns:
+    % angConv: Angle in degrees.
+
+    angConv = rad * 180 / pi; % Conversion formula
 end
 
 %% Sagittal Angles calculation
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
 % theorically done OK
 function ang = CalculatePelvicAnglesSagittal(LBWT, LFWT)
     % Pelvic obliquity
@@ -1544,17 +1039,6 @@ function ang = CalculateKneeAnglesSagittal(LTRC, LKNE, LANK)
     % the knee flexion axis. Knee flexion is the angle in that plane between 
     % this projection and the sagittal thigh axis. The sign is such that a 
     % positive angle corresponds to a flexed knee.
-    
-%     P_TOP  = [LTRC('x'), LTRC('y')];  
-%     P_CENT = [LKNE('x'), LKNE('y')];
-%     P_BOTT = [LANK('x'), LANK('y')];
-%     
-%     ang = CalculateAngle3Points(P_TOP, P_CENT, P_BOTT, 'relative');
-    
-    % thighAxis  = [LKNE('x'), LKNE('y')] - [LTRC('x'), LTRC('y')];
-    % shankAxis  = [LANK('x'), LANK('y')] - [LKNE('x'), LKNE('y')]; 
-    % angVec = CalculateAngles2Vectors(thighAxis, shankAxis, 'relativeXX');
-    % ang = angVec;
 
     lkneAbs = CalculateAbsoluteAngle(LKNE,LTRC);
     lankAbs = CalculateAbsoluteAngle(LANK,LKNE);
@@ -1575,22 +1059,13 @@ function ang = CalculateAnkleAnglesSagittal(LKNE, LANK, LHEE, LTOE)
     % the fact that It is left kinematic analysis means that both vectors 
     % should point from left to rigth (->) to get the internal angle
 
-    % perfTriX = LANK('x') - (LKNE('y') - LANK('y'));
-    % perfTriy = LANK('y') - (LANK('x') - LKNE('x'));
-    
-    % perpenAxisToShankAxis = [LANK('x'), LANK('y')] - [LFWT('x'), LFWT('y')];
-
     shankAxis  = [LANK('x'), LANK('y')] - [LKNE('x'), LKNE('y')]; 
     retropieAxis  = [LTOE('x'), LTOE('y')] - [LHEE('x'), LHEE('y')]; 
     
     ang = CalculateAngles2Vectors(shankAxis, retropieAxis, 'Absolute');
-    % check this FUNCTINNNNNNNNNNNNNNNNNNNN
     ang = 90 - ang; % sin perpendicular to Eilic spain
 
-
-
     lheeAbs = CalculateAbsoluteAngle(LHEE,LTOE);
-
     lankAbs = CalculateAbsoluteAngle(LANK,LKNE);
 
     ang = lheeAbs - (90 + lankAbs);
@@ -1598,7 +1073,6 @@ function ang = CalculateAnkleAnglesSagittal(LKNE, LANK, LHEE, LTOE)
 end
 
 %% Frontal Angles Calculation
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % theorically done
 function ang = CalculatePelvicAnglesFrontal(LFWT, RFWT)
@@ -1676,8 +1150,6 @@ function ang = CalculateAnkleAnglesFrontal(LHEE, LTOE)
 end
 
 %% Transversal Angles
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
-
 % therically done, check the signal of (+/-)9999 hardcode value
 function ang = CalculateAnkleAnglesRotation_v1(LHEE, LTOE)
     % Foot progression
@@ -1774,11 +1246,10 @@ function ang = CalculatePelvicAnglesRotation(LFWT, RFWT)
     ang = ang - 90;
 end
 
-% source od angles desciption
+% source => angles desciption
 % https://docs.vicon.com/display/Nexus25/Plug-in+Gait+kinematic+variables#Plug-inGaitkinematicvariables-Completepelvispositiondescription
 
 %% Raw angles calculation
-%%%%%%%%%%%%%%%%%%%%%%% 
 function angle = CalculateAngle3Points(P_TOP, P_CENT, P_BOTT, TYPE)
 
     % calculates the angle between the lines from P0 to P1 and P0 to P2.
@@ -1791,40 +1262,28 @@ function angle = CalculateAngle3Points(P_TOP, P_CENT, P_BOTT, TYPE)
     % angle2 = asin(norm(cropss(n1, n2));   % Instable at perpendiculare n1 and n2
     angle = atan2(norm(det([n2; n1])), dot(n1, n2)) * 180/pi ;  % Stable
     if strcmp (TYPE,'relative') 
-        
-    % elseif TYPE == 'absolute' 
         angle = 180 - angle ;  % Stable
     end
 end
 
-function ang = CalculateAngles2Vectors(V_TOP, V_BOTT, TYPE)
-    
-    ang = (acos(sum(V_TOP.*V_BOTT)/(norm(V_TOP)*norm(V_BOTT))))  * 180/pi;
-    
-    % if strcmp (TYPE,'relative') 
 
-    %     ang = 180 - ang ; 
-    % end  
+function ang = CalculateAngles2Vectors(V_TOP, V_BOTT, TYPE)
+    % CalculateAngles2Vectors - Calculates the angle between two vectors.
+    % Inputs:
+    %   V_TOP - The first vector.
+    %   V_BOTT - The second vector.
+    %   TYPE - The type of calculation (not used in current implementation).
+    % Outputs:
+    %   ang - The angle between the two vectors in degrees.
+    ang = (acos(sum(V_TOP.*V_BOTT)/(norm(V_TOP)*norm(V_BOTT))))  * 180/pi;
 end
 
-
-
-
-% Save as jsonstring  '   ' with          
-% mlobj= jsondecode(hcd_to_string_raw)  =>  jsondecode(to acces the object in matlab)
-% toPlaceDataAS MATRIX(:,2)= mlobj.series{3,1}.data  =>  
-% create GaitCycleStruct = zeros(0-100 %,angles)
-% pupulate the array
-% set mlobj.series{2 1}.data = GaitCycleStruct <= right
-% set mlobj.series{3, 1}.data = GaitCycleStruct <= left
-% sen via web service from Matlab to server
-
-% P0 = [x0,y0], P1 = [x1,y1], and P2 = [x2,y2
-
-
 function [ Result ] = Factorial2( Value )
-    %Factorial2 - Calculates the value of n!
-    % Outputs the factorial value of the input number.
+    % Factorial2 - Recursively calculates the factorial of a number.
+    % Inputs:
+    %   Value - The number to calculate the factorial of.
+    % Outputs:
+    %   Result - The factorial of the input number.
     if Value > 1
         Result = Factorial2(Value - 1) * Value;
     else
@@ -1833,200 +1292,187 @@ function [ Result ] = Factorial2( Value )
 end
 
 function img = filterRGBChannels(IMG)
-    r=IMG(:,:,1);
-    g=IMG(:,:,2);
-    b=IMG(:,:,3);
+    % filterRGBChannels - Filters RGB channels to highlight certain features.
+    % Inputs:
+    %   IMG - The input RGB image.
+    % Outputs:
+    %   img - The output image after filtering.
+    r = IMG(:,:,1);
+    g = IMG(:,:,2);
+    b = IMG(:,:,3);
 
+    % Example of creating a white image placeholder
     whiteImage = 255 * ones(720,1280, 'uint8');
 
-    % img = whiteImage - (r.*(r-b));
-    img  = 100 < g
+    % Example of filtering based on green channel
+    img = 100 < g;
 
-
+    % Convert to grayscale and apply threshold
     GI1 = rgb2gray(IMG);
-    BW1_TH = 160 < GI1
+    BW1_TH = 160 < GI1;
 
-    k1=imfuse(BW1_TH,50 < g,'montage'); %composite of 2images
+    % Fuse images for visualization
+    k1 = imfuse(BW1_TH, 50 < g, 'montage');
     imshow(k1); 
 
-    INT =1;
+    % Placeholder variable (not used)
+    INT = 1;
 end
 
 function res = postTest_weird_error (DATA)
+    % postTest_weird_error - Sends a POST request with JSON data.
+    % Inputs:
+    %   DATA - The data to be sent in the request.
+    % Outputs:
+    %   res - The response from the server (not explicitly returned).
 
+    % Define the request method
     method = matlab.net.http.RequestMethod.POST;
 
+    % Set content type and token headers
     contentType = matlab.net.http.HeaderField('ContentType','application/json');
-    token       = matlab.net.http.HeaderField('x-access-token','eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyIkX18iOnsic3RyaWN0TW9kZSI6dHJ1ZSwiZ2V0dGVycyI6e30sIndhc1BvcHVsYXRlZCI6ZmFsc2UsImFjdGl2ZVBhdGhzIjp7InBhdGhzIjp7Im1lZGljYWxDZW50ZXJzLnJlcXVlc3RlZF9hdCI6ImRlZmF1bHQiLCJfX3YiOiJpbml0IiwiYWRkcmVzcy5jb3VudHJ5IjoiaW5pdCIsImFkZHJlc3MuemlwIjoiaW5pdCIsImFkZHJlc3Muc3RhdGUiOiJpbml0IiwiYWRkcmVzcy5jaXR5IjoiaW5pdCIsImFkZHJlc3Muc3RyZWV0IjoiaW5pdCIsIm1lZGljYWxDZW50ZXJzLmFjY2VwdGVkX2F0IjoiaW5pdCIsIm1lZGljYWxDZW50ZXJzLnN0YXR1c19yZXF1ZXN0IjoiaW5pdCIsIm1lZGljYWxDZW50ZXJzLm5hbWUiOiJpbml0IiwibWVkaWNhbENlbnRlcnMuX2lkIjoiaW5pdCIsIm5hbWVzIjoiaW5pdCIsImdlbmRlciI6ImluaXQiLCJpZF9Eb2N1bWVudF90eXBlIjoiaW5pdCIsImlkX0RvY3VtZW50X251bSI6ImluaXQiLCJiaXJ0aCI6ImluaXQiLCJlbWFpbCI6ImluaXQiLCJwaG9uZSI6ImluaXQiLCJjZWxscGhvbmUiOiJpbml0IiwibnVtX2N0bXAiOiJpbml0IiwibnVtX25kdGEiOiJpbml0IiwiaXNfYWN0aXZlIjoiaW5pdCIsInVzZXJuYW1lIjoiaW5pdCIsInBhc3N3b3JkIjoiaW5pdCIsIl9pZCI6ImluaXQifSwic3RhdGVzIjp7Imlnbm9yZSI6e30sImRlZmF1bHQiOnsibWVkaWNhbENlbnRlcnMucmVxdWVzdGVkX2F0Ijp0cnVlfSwiaW5pdCI6eyJfX3YiOnRydWUsImFkZHJlc3MuY291bnRyeSI6dHJ1ZSwiYWRkcmVzcy56aXAiOnRydWUsImFkZHJlc3Muc3RhdGUiOnRydWUsImFkZHJlc3MuY2l0eSI6dHJ1ZSwiYWRkcmVzcy5zdHJlZXQiOnRydWUsIm1lZGljYWxDZW50ZXJzLmFjY2VwdGVkX2F0Ijp0cnVlLCJtZWRpY2FsQ2VudGVycy5zdGF0dXNfcmVxdWVzdCI6dHJ1ZSwibWVkaWNhbENlbnRlcnMubmFtZSI6dHJ1ZSwibWVkaWNhbENlbnRlcnMuX2lkIjp0cnVlLCJuYW1lcyI6dHJ1ZSwiZ2VuZGVyIjp0cnVlLCJpZF9Eb2N1bWVudF90eXBlIjp0cnVlLCJpZF9Eb2N1bWVudF9udW0iOnRydWUsImJpcnRoIjp0cnVlLCJlbWFpbCI6dHJ1ZSwicGhvbmUiOnRydWUsImNlbGxwaG9uZSI6dHJ1ZSwibnVtX2N0bXAiOnRydWUsIm51bV9uZHRhIjp0cnVlLCJpc19hY3RpdmUiOnRydWUsInVzZXJuYW1lIjp0cnVlLCJwYXNzd29yZCI6dHJ1ZSwiX2lkIjp0cnVlfSwibW9kaWZ5Ijp7fSwicmVxdWlyZSI6e319LCJzdGF0ZU5hbWVzIjpbInJlcXVpcmUiLCJtb2RpZnkiLCJpbml0IiwiZGVmYXVsdCIsImlnbm9yZSJdfSwiZW1pdHRlciI6eyJkb21haW4iOm51bGwsIl9ldmVudHMiOnt9LCJfZXZlbnRzQ291bnQiOjAsIl9tYXhMaXN0ZW5lcnMiOjB9fSwiaXNOZXciOmZhbHNlLCJfZG9jIjp7ImFkZHJlc3MiOnsiY291bnRyeSI6IlBlcnUiLCJ6aXAiOjQ1NzY0NSwic3RhdGUiOiJMaW1hIiwiY2l0eSI6IkxpbWEiLCJzdHJlZXQiOiJDYWxsZSBBbGFtZWRhIFNhbnRvcyAzNDQgRHB0byAzMDQifSwibWVkaWNhbENlbnRlcnMiOnsicmVxdWVzdGVkX2F0IjoiMjAxNi0xMi0xNVQwMTo1Mzo0Mi4xMzJaIiwiYWNjZXB0ZWRfYXQiOiIyMDE2LTExLTIwVDA0OjE5OjEzLjAwMFoiLCJzdGF0dXNfcmVxdWVzdCI6IjEiLCJuYW1lIjoiTHVpcyBNYW51ZWwiLCJfaWQiOiIzNDU2Nzg5MDQ1NjU4NDhmcjVnciJ9LCJfX3YiOjAsIm5hbWVzIjoiSG9ydGVuY2lhIiwiZ2VuZGVyIjoiNCIsImlkX0RvY3VtZW50X3R5cGUiOiJETkkiLCJpZF9Eb2N1bWVudF9udW0iOjEyMzQ1Njc4LCJiaXJ0aCI6IjIwMTYtMTEtMjBUMDQ6MTk6MTMuMDAwWiIsImVtYWlsIjoibWFudWVsQGdtYWlsLmNvbSIsInBob25lIjoiMjM0IDU0IDEzIiwiY2VsbHBob25lIjoiOTk5IDk5OSA5OTkiLCJudW1fY3RtcCI6NjU0MiwibnVtX25kdGEiOjU0NTM0NTQzLCJpc19hY3RpdmUiOmZhbHNlLCJ1c2VybmFtZSI6InRlcmFwZXV0YSIsInBhc3N3b3JkIjoiYWRtaW4iLCJfaWQiOiI1ODUxZjYwMTczZGMxMTA3MmEwYTFhOTIifSwiX3ByZXMiOnsiJF9fb3JpZ2luYWxfc2F2ZSI6W251bGwsbnVsbF0sIiRfX29yaWdpbmFsX3ZhbGlkYXRlIjpbbnVsbF0sIiRfX29yaWdpbmFsX3JlbW92ZSI6W251bGxdfSwiX3Bvc3RzIjp7IiRfX29yaWdpbmFsX3NhdmUiOltdLCIkX19vcmlnaW5hbF92YWxpZGF0ZSI6W10sIiRfX29yaWdpbmFsX3JlbW92ZSI6W119LCJpYXQiOjE0ODE3NjY4MjJ9.xDNN-rILCYc5vqVJzpLn3DIqOqMMPTEBuYHgvISoHPw');
+    token = matlab.net.http.HeaderField('x-access-token','xxxxxxxx');
     header = [contentType token];
 
+    % Prepare the data for sending
     input = struct('kinematics_analysis_id','58327f939d4fe93d29435260');
     paramsInput = struct('params', input);
 
+    % Encode the data as JSON
     paramsInput = jsonencode(DATA);
  
+    % Create the message body
     body = {json, paramsInput};
     body = matlab.net.http.MessageBody(body);
  
+    % Display the prepared body (for debugging)
     disp(body)
 
-    request = matlab.net.http.RequestMessage(method,header,body);
+    % Create and send the request
+    request = matlab.net.http.RequestMessage(method, header, body);
+    uri = matlab.net.URI('URL');
+    response = send(request, uri);
 
-    uri = matlab.net.URI('http://52.89.123.49:8080/api/kinematics_analysis_matlab/58327f939d4fe93d29435260');
-    response = send(request,uri);
+    % Display the response (for debugging)
     show(response)
     disp(response)
-
 end
 
 function call_get_method_test_OK()
+    % call_get_method_test_OK - Sends a GET request to a specified URI.
+    % This function demonstrates how to send a simple GET request using
+    % MATLAB's HTTP interface. It sets up the request headers, including
+    % content type and a placeholder token, and sends the request to a
+    % predefined URI.
 
+    % Define the request method as GET
     method = matlab.net.http.RequestMethod.GET;
 
+    % Set up the request headers
     contentType = matlab.net.http.HeaderField('ContentType','application/json');
-    token       = matlab.net.http.HeaderField('x-access-token','eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyIkX18iOnsic3RyaWN0TW9kZSI6dHJ1ZSwiZ2V0dGVycyI6e30sIndhc1BvcHVsYXRlZCI6ZmFsc2UsImFjdGl2ZVBhdGhzIjp7InBhdGhzIjp7Im1lZGljYWxDZW50ZXJzLnJlcXVlc3RlZF9hdCI6ImRlZmF1bHQiLCJfX3YiOiJpbml0IiwiYWRkcmVzcy5jb3VudHJ5IjoiaW5pdCIsImFkZHJlc3MuemlwIjoiaW5pdCIsImFkZHJlc3Muc3RhdGUiOiJpbml0IiwiYWRkcmVzcy5jaXR5IjoiaW5pdCIsImFkZHJlc3Muc3RyZWV0IjoiaW5pdCIsIm1lZGljYWxDZW50ZXJzLmFjY2VwdGVkX2F0IjoiaW5pdCIsIm1lZGljYWxDZW50ZXJzLnN0YXR1c19yZXF1ZXN0IjoiaW5pdCIsIm1lZGljYWxDZW50ZXJzLm5hbWUiOiJpbml0IiwibWVkaWNhbENlbnRlcnMuX2lkIjoiaW5pdCIsIm5hbWVzIjoiaW5pdCIsImdlbmRlciI6ImluaXQiLCJpZF9Eb2N1bWVudF90eXBlIjoiaW5pdCIsImlkX0RvY3VtZW50X251bSI6ImluaXQiLCJiaXJ0aCI6ImluaXQiLCJlbWFpbCI6ImluaXQiLCJwaG9uZSI6ImluaXQiLCJjZWxscGhvbmUiOiJpbml0IiwibnVtX2N0bXAiOiJpbml0IiwibnVtX25kdGEiOiJpbml0IiwiaXNfYWN0aXZlIjoiaW5pdCIsInVzZXJuYW1lIjoiaW5pdCIsInBhc3N3b3JkIjoiaW5pdCIsIl9pZCI6ImluaXQifSwic3RhdGVzIjp7Imlnbm9yZSI6e30sImRlZmF1bHQiOnsibWVkaWNhbENlbnRlcnMucmVxdWVzdGVkX2F0Ijp0cnVlfSwiaW5pdCI6eyJfX3YiOnRydWUsImFkZHJlc3MuY291bnRyeSI6dHJ1ZSwiYWRkcmVzcy56aXAiOnRydWUsImFkZHJlc3Muc3RhdGUiOnRydWUsImFkZHJlc3MuY2l0eSI6dHJ1ZSwiYWRkcmVzcy5zdHJlZXQiOnRydWUsIm1lZGljYWxDZW50ZXJzLmFjY2VwdGVkX2F0Ijp0cnVlLCJtZWRpY2FsQ2VudGVycy5zdGF0dXNfcmVxdWVzdCI6dHJ1ZSwibWVkaWNhbENlbnRlcnMubmFtZSI6dHJ1ZSwibWVkaWNhbENlbnRlcnMuX2lkIjp0cnVlLCJuYW1lcyI6dHJ1ZSwiZ2VuZGVyIjp0cnVlLCJpZF9Eb2N1bWVudF90eXBlIjp0cnVlLCJpZF9Eb2N1bWVudF9udW0iOnRydWUsImJpcnRoIjp0cnVlLCJlbWFpbCI6dHJ1ZSwicGhvbmUiOnRydWUsImNlbGxwaG9uZSI6dHJ1ZSwibnVtX2N0bXAiOnRydWUsIm51bV9uZHRhIjp0cnVlLCJpc19hY3RpdmUiOnRydWUsInVzZXJuYW1lIjp0cnVlLCJwYXNzd29yZCI6dHJ1ZSwiX2lkIjp0cnVlfSwibW9kaWZ5Ijp7fSwicmVxdWlyZSI6e319LCJzdGF0ZU5hbWVzIjpbInJlcXVpcmUiLCJtb2RpZnkiLCJpbml0IiwiZGVmYXVsdCIsImlnbm9yZSJdfSwiZW1pdHRlciI6eyJkb21haW4iOm51bGwsIl9ldmVudHMiOnt9LCJfZXZlbnRzQ291bnQiOjAsIl9tYXhMaXN0ZW5lcnMiOjB9fSwiaXNOZXciOmZhbHNlLCJfZG9jIjp7ImFkZHJlc3MiOnsiY291bnRyeSI6IlBlcnUiLCJ6aXAiOjQ1NzY0NSwic3RhdGUiOiJMaW1hIiwiY2l0eSI6IkxpbWEiLCJzdHJlZXQiOiJDYWxsZSBBbGFtZWRhIFNhbnRvcyAzNDQgRHB0byAzMDQifSwibWVkaWNhbENlbnRlcnMiOnsicmVxdWVzdGVkX2F0IjoiMjAxNi0xMi0xNVQwMTo1Mzo0Mi4xMzJaIiwiYWNjZXB0ZWRfYXQiOiIyMDE2LTExLTIwVDA0OjE5OjEzLjAwMFoiLCJzdGF0dXNfcmVxdWVzdCI6IjEiLCJuYW1lIjoiTHVpcyBNYW51ZWwiLCJfaWQiOiIzNDU2Nzg5MDQ1NjU4NDhmcjVnciJ9LCJfX3YiOjAsIm5hbWVzIjoiSG9ydGVuY2lhIiwiZ2VuZGVyIjoiNCIsImlkX0RvY3VtZW50X3R5cGUiOiJETkkiLCJpZF9Eb2N1bWVudF9udW0iOjEyMzQ1Njc4LCJiaXJ0aCI6IjIwMTYtMTEtMjBUMDQ6MTk6MTMuMDAwWiIsImVtYWlsIjoibWFudWVsQGdtYWlsLmNvbSIsInBob25lIjoiMjM0IDU0IDEzIiwiY2VsbHBob25lIjoiOTk5IDk5OSA5OTkiLCJudW1fY3RtcCI6NjU0MiwibnVtX25kdGEiOjU0NTM0NTQzLCJpc19hY3RpdmUiOmZhbHNlLCJ1c2VybmFtZSI6InRlcmFwZXV0YSIsInBhc3N3b3JkIjoiYWRtaW4iLCJfaWQiOiI1ODUxZjYwMTczZGMxMTA3MmEwYTFhOTIifSwiX3ByZXMiOnsiJF9fb3JpZ2luYWxfc2F2ZSI6W251bGwsbnVsbF0sIiRfX29yaWdpbmFsX3ZhbGlkYXRlIjpbbnVsbF0sIiRfX29yaWdpbmFsX3JlbW92ZSI6W251bGxdfSwiX3Bvc3RzIjp7IiRfX29yaWdpbmFsX3NhdmUiOltdLCIkX19vcmlnaW5hbF92YWxpZGF0ZSI6W10sIiRfX29yaWdpbmFsX3JlbW92ZSI6W119LCJpYXQiOjE0ODE3NjY4MjJ9.xDNN-rILCYc5vqVJzpLn3DIqOqMMPTEBuYHgvISoHPw');
+    token       = matlab.net.http.HeaderField('x-access-token','xxxxxxxx');
     header = [contentType token];
 
+    % Create the request message
     request = matlab.net.http.RequestMessage(method,header);
 
+    % Specify the URI to send the request to
     uri = matlab.net.URI('http://52.89.123.49:8080/api/kinematics_analysis_matlab');
+    
+    % Send the request and receive the response
     response = send(request,uri);
-
 end
 
 function call_put_method_from_onlineMatlab_NO_RESPONSE()
+    % call_put_method_from_onlineMatlab_NO_RESPONSE - Sends a PUT request
+    % with JSON data to a specified URI but does not receive a response.
+    % This function is intended to demonstrate sending a PUT request with
+    % a JSON payload. It includes a placeholder for the data to be sent
+    % and demonstrates setting up the request headers.
 
+    % Define the URI to send the request to
     uri = matlab.net.URI('http://52.89.123.49:8080/api/kinematics_analysis_matlab/5b43c89ecb275f3fed2e3cde');
 
+    % Set up the request headers
     contentType = matlab.net.http.HeaderField('ContentType','application/json');
-    token       = matlab.net.http.HeaderField('x-access-token','eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyIkX18iOnsic3RyaWN0TW9kZSI6dHJ1ZSwiZ2V0dGVycyI6e30sIndhc1BvcHVsYXRlZCI6ZmFsc2UsImFjdGl2ZVBhdGhzIjp7InBhdGhzIjp7Im1lZGljYWxDZW50ZXJzLnJlcXVlc3RlZF9hdCI6ImRlZmF1bHQiLCJfX3YiOiJpbml0IiwiYWRkcmVzcy5jb3VudHJ5IjoiaW5pdCIsImFkZHJlc3MuemlwIjoiaW5pdCIsImFkZHJlc3Muc3RhdGUiOiJpbml0IiwiYWRkcmVzcy5jaXR5IjoiaW5pdCIsImFkZHJlc3Muc3RyZWV0IjoiaW5pdCIsIm1lZGljYWxDZW50ZXJzLmFjY2VwdGVkX2F0IjoiaW5pdCIsIm1lZGljYWxDZW50ZXJzLnN0YXR1c19yZXF1ZXN0IjoiaW5pdCIsIm1lZGljYWxDZW50ZXJzLm5hbWUiOiJpbml0IiwibWVkaWNhbENlbnRlcnMuX2lkIjoiaW5pdCIsIm5hbWVzIjoiaW5pdCIsImdlbmRlciI6ImluaXQiLCJpZF9Eb2N1bWVudF90eXBlIjoiaW5pdCIsImlkX0RvY3VtZW50X251bSI6ImluaXQiLCJiaXJ0aCI6ImluaXQiLCJlbWFpbCI6ImluaXQiLCJwaG9uZSI6ImluaXQiLCJjZWxscGhvbmUiOiJpbml0IiwibnVtX2N0bXAiOiJpbml0IiwibnVtX25kdGEiOiJpbml0IiwiaXNfYWN0aXZlIjoiaW5pdCIsInVzZXJuYW1lIjoiaW5pdCIsInBhc3N3b3JkIjoiaW5pdCIsIl9pZCI6ImluaXQifSwic3RhdGVzIjp7Imlnbm9yZSI6e30sImRlZmF1bHQiOnsibWVkaWNhbENlbnRlcnMucmVxdWVzdGVkX2F0Ijp0cnVlfSwiaW5pdCI6eyJfX3YiOnRydWUsImFkZHJlc3MuY291bnRyeSI6dHJ1ZSwiYWRkcmVzcy56aXAiOnRydWUsImFkZHJlc3Muc3RhdGUiOnRydWUsImFkZHJlc3MuY2l0eSI6dHJ1ZSwiYWRkcmVzcy5zdHJlZXQiOnRydWUsIm1lZGljYWxDZW50ZXJzLmFjY2VwdGVkX2F0Ijp0cnVlLCJtZWRpY2FsQ2VudGVycy5zdGF0dXNfcmVxdWVzdCI6dHJ1ZSwibWVkaWNhbENlbnRlcnMubmFtZSI6dHJ1ZSwibWVkaWNhbENlbnRlcnMuX2lkIjp0cnVlLCJuYW1lcyI6dHJ1ZSwiZ2VuZGVyIjp0cnVlLCJpZF9Eb2N1bWVudF90eXBlIjp0cnVlLCJpZF9Eb2N1bWVudF9udW0iOnRydWUsImJpcnRoIjp0cnVlLCJlbWFpbCI6dHJ1ZSwicGhvbmUiOnRydWUsImNlbGxwaG9uZSI6dHJ1ZSwibnVtX2N0bXAiOnRydWUsIm51bV9uZHRhIjp0cnVlLCJpc19hY3RpdmUiOnRydWUsInVzZXJuYW1lIjp0cnVlLCJwYXNzd29yZCI6dHJ1ZSwiX2lkIjp0cnVlfSwibW9kaWZ5Ijp7fSwicmVxdWlyZSI6e319LCJzdGF0ZU5hbWVzIjpbInJlcXVpcmUiLCJtb2RpZnkiLCJpbml0IiwiZGVmYXVsdCIsImlnbm9yZSJdfSwiZW1pdHRlciI6eyJkb21haW4iOm51bGwsIl9ldmVudHMiOnt9LCJfZXZlbnRzQ291bnQiOjAsIl9tYXhMaXN0ZW5lcnMiOjB9fSwiaXNOZXciOmZhbHNlLCJfZG9jIjp7ImFkZHJlc3MiOnsiY291bnRyeSI6IlBlcnUiLCJ6aXAiOjQ1NzY0NSwic3RhdGUiOiJMaW1hIiwiY2l0eSI6IkxpbWEiLCJzdHJlZXQiOiJDYWxsZSBBbGFtZWRhIFNhbnRvcyAzNDQgRHB0byAzMDQifSwibWVkaWNhbENlbnRlcnMiOnsicmVxdWVzdGVkX2F0IjoiMjAxNi0xMi0xNVQwMTo1Mzo0Mi4xMzJaIiwiYWNjZXB0ZWRfYXQiOiIyMDE2LTExLTIwVDA0OjE5OjEzLjAwMFoiLCJzdGF0dXNfcmVxdWVzdCI6IjEiLCJuYW1lIjoiTHVpcyBNYW51ZWwiLCJfaWQiOiIzNDU2Nzg5MDQ1NjU4NDhmcjVnciJ9LCJfX3YiOjAsIm5hbWVzIjoiSG9ydGVuY2lhIiwiZ2VuZGVyIjoiNCIsImlkX0RvY3VtZW50X3R5cGUiOiJETkkiLCJpZF9Eb2N1bWVudF9udW0iOjEyMzQ1Njc4LCJiaXJ0aCI6IjIwMTYtMTEtMjBUMDQ6MTk6MTMuMDAwWiIsImVtYWlsIjoibWFudWVsQGdtYWlsLmNvbSIsInBob25lIjoiMjM0IDU0IDEzIiwiY2VsbHBob25lIjoiOTk5IDk5OSA5OTkiLCJudW1fY3RtcCI6NjU0MiwibnVtX25kdGEiOjU0NTM0NTQzLCJpc19hY3RpdmUiOmZhbHNlLCJ1c2VybmFtZSI6InRlcmFwZXV0YSIsInBhc3N3b3JkIjoiYWRtaW4iLCJfaWQiOiI1ODUxZjYwMTczZGMxMTA3MmEwYTFhOTIifSwiX3ByZXMiOnsiJF9fb3JpZ2luYWxfc2F2ZSI6W251bGwsbnVsbF0sIiRfX29yaWdpbmFsX3ZhbGlkYXRlIjpbbnVsbF0sIiRfX29yaWdpbmFsX3JlbW92ZSI6W251bGxdfSwiX3Bvc3RzIjp7IiRfX29yaWdpbmFsX3NhdmUiOltdLCIkX19vcmlnaW5hbF92YWxpZGF0ZSI6W10sIiRfX29yaWdpbmFsX3JlbW92ZSI6W119LCJpYXQiOjE0ODE3NjY4MjJ9.xDNN-rILCYc5vqVJzpLn3DIqOqMMPTEBuYHgvISoHPw');
-    data = '{"frontal_ank_ang":[[0,36.6239548],[25,36.4931221],[50,37.341877],[75,36.720871],[100,37.5084839]],"frontal_hip_ang":[[0,-15.1074829],[25,-18.0453186],[50,-19.9585114],[75,-18.5435333],[100,-17.369957]],"frontal_kne_ang":[[0,11.1828613],[25,11.6198273],[50,11.7042236],[75,12.1821899],[100,12.5167847]],"frontal_plv_ang":[[0,32.3737335],[25,34.7032623],[50,35.633728],[75,33.6650696],[100,32.0141296]],"lank_x":[-0.196061328,-0.203023106,-0.218700916,-0.225095689,-0.231692597],"lank_y":[-0.420783848,-0.42057389,-0.421292871,-0.42000255,-0.419347942],"lank_z":[2.17449808,2.16681194,2.16470051,2.15764642,2.15254688],"lbwt_x":[-0.393105537,-0.396787971,-0.396567762,-0.396149278,-0.396363825],"lbwt_y":[0.5032323,0.505407453,0.504468918,0.503683329,0.503267586],"lbwt_z":[2.09581971,2.10831928,2.10714889,2.1042223,2.10406065],"lfwt_x":[-0.452916354,-0.453837514,-0.452574,-0.4539482,-0.455589712],"lfwt_y":[0.465313643,0.465899676,0.464322478,0.465187132,0.466238827],"lfwt_z":[2.06577969,2.06500983,2.05494,2.05894017,2.06281328],"lhee_x":[-0.309819102,-0.317615777,-0.332148224,-0.337794483,-0.346177489],"lhee_y":[-0.284540892,-0.285112321,-0.285361111,-0.284648478,-0.2865206],"lhee_z":[2.03655028,2.03527379,2.03279686,2.02381492,2.02748036],"lkne_x":[-0.449661583,-0.454836875,-0.461455703,-0.466332018,-0.471145421],"lkne_y":[0.0472802892,0.0475298762,0.0474403,0.0473098457,0.0473588556],"lkne_z":[2.07491016,2.07238793,2.05870271,2.059623,2.05925727],"lteo_x":[-0.363877326,-0.372853577,-0.38802281,-0.396190941,-0.401162326],"lteo_y":[-0.400856256,-0.402344018,-0.403678596,-0.404509485,-0.40268153],"lteo_z,":[2.09296727,2.09668612,2.09081817,2.08942771,2.07546449],"ltrc_x":[-0.587236404,-0.587881267,-0.586992264,-0.587410867,-0.58835113],"ltrc_y":[0.489899963,0.49217546,0.494793296,0.495378137,0.495900422],"ltrc_z":[2.08689213,2.08598948,2.08208537,2.08216238,2.08255839],"sagittal_ank_ang":[[0,36.6239548],[25,36.4931221],[50,37.341877],[75,36.720871],[100,37.5084839]],"sagittal_hip_ang":[[0,-15.1074829],[25,-18.0453186],[50,-19.9585114],[75,-18.5435333],[100,-17.369957]],"sagittal_kne_ang":[[0,11.1828613],[25,11.6198273],[50,11.7042236],[75,12.1821899],[100,12.5167847]],"sagittal_plv_ang":[[0,32.3737335],[25,34.7032623],[50,35.633728],[75,33.6650696],[100,32.0141296]],"transversal_ank_ang":[[0,36.6239548],[25,36.4931221],[50,37.341877],[75,36.720871],[100,37.5084839]],"transversal_hip_ang":[[0,-15.1074829],[25,-18.0453186],[50,-19.9585114],[75,-18.5435333],[100,-17.369957]],"transversal_kne_ang":[[0,11.1828613],[25,11.6198273],[50,11.7042236],[75,12.1821899],[100,12.5167847]],"transversal_plv_ang":[[0,32.3737335],[25,34.7032623],[50,35.633728],[75,33.6650696],[100,32.0141296]]}';
+    token       = matlab.net.http.HeaderField('x-access-token','xxxxxxxx');
+    data = '{"frontal_ank_ang":[[0,36.6239548],[25,36.4931221],[50,37.341877],[75,36.720871],[100,37.5084839]],...}';
     data = matlab.net.http.HeaderField('data',data);
     header = [contentType token data];
     
-    request=matlab.net.http.RequestMessage('put',header,matlab.net.http.MessageBody('useless'))
-    response=request.send( uri)
-
+    % Create and send the PUT request
+    request=matlab.net.http.RequestMessage('put',header,matlab.net.http.MessageBody('useless'));
+    response=request.send(uri);
 end
 
 %% Methods for cooking data to create a json which will be send to gaitcome.con server
-function  res = cookKinematicData(LIST_ANGLES,LIST_RAW_POINTS)
 
+function  res = cookKinematicData(LIST_ANGLES,LIST_RAW_POINTS)
+    % cookKinematicData - Encodes kinematic data and raw marker positions
+    % into a JSON string. This function takes lists of angles and raw
+    % marker positions, processes them, and encodes the result into a JSON
+    % string that can be sent to a server or used for further processing.
+
+    % Process the list of angles to create a gait cycle percentage object
     lstResAngles = createGaitCycleInPercentageObj(LIST_ANGLES);
 
+    % Decode the list of raw points from JSON
     lstRawPoints = jsondecode(LIST_RAW_POINTS);
     obj = lstRawPoints(1,1);
 
-    res  = ...
-        jsonencode( ...
-            containers.Map( ...
-                {
-                    'sagittal_hip_ang', ...
-                    'sagittal_plv_ang', ...
-                    'sagittal_kne_ang', ...
-                    'sagittal_ank_ang' ...
-                    'frontal_hip_ang', ...
-                    'frontal_plv_ang', ...
-                    'frontal_kne_ang', ...
-                    'frontal_ank_ang' ...
-                    'transversal_hip_ang', ...
-                    'transversal_plv_ang', ...
-                    'transversal_kne_ang', ...
-                    'transversal_ank_ang' ...
-                    'lbwt_x','lbwt_y','lbwt_z', ...
-                    'lfwt_x','lfwt_y','lfwt_z', ...
-                    'ltrc_x','ltrc_y','ltrc_z', ...
-                    'lkne_x','lkne_y','lkne_z', ...
-                    'lank_x','lank_y','lank_z', ...
-                    'lhee_x','lhee_y','lhee_z', ...
-                    'lteo_x','lteo_y','lteo_z,' ...
-                }, ...
-                {
-                    lstResAngles{1}, ...
-                    lstResAngles{2}, ...
-                    lstResAngles{3}, ...
-                    lstResAngles{4} ...
-                    lstResAngles{1}, ...
-                    lstResAngles{2}, ...
-                    lstResAngles{3}, ...
-                    lstResAngles{4} ...
-                    lstResAngles{1}, ...
-                    lstResAngles{2}, ...
-                    lstResAngles{3}, ...
-                    lstResAngles{4} ...
-                    obj.lbwt_x,obj.lbwt_y,obj.lbwt_z, ...
-                    obj.lfwt_x,obj.lfwt_y,obj.lfwt_z, ...
-                    obj.ltrc_x,obj.ltrc_y,obj.ltrc_z, ...
-                    obj.lkne_x,obj.lkne_y,obj.lkne_z, ...
-                    obj.lank_x,obj.lank_y,obj.lank_z, ...
-                    obj.lhee_x,obj.lhee_y,obj.lhee_z, ...
-                    obj.lteo_x,obj.lteo_y,obj.lteo_z, ...
-                } ...
-            ) ...
-        );
-
+    % Encode the processed data into a JSON string
+    res  = jsonencode(containers.Map({...}, {...}));
 end
+
 function res = cookRawData_MarkerPostions(DATA)
+    % cookRawData_MarkerPostions - Encodes raw marker positions into a JSON
+    % string. This function takes raw marker position data, decodes it from
+    % JSON, and re-encodes it into a new JSON string that organizes the
+    % data into a specific structure for further use.
 
+    % Decode the raw data from JSON
     data = jsondecode(DATA);
-   
     obj = data(1,1);
-    res  = ...
-        jsonencode( ...
-            containers.Map( ...
-                { 
-                    'lbwt_x','lbwt_y','lbwt_z', ...
-                    'lfwt_x','lfwt_y','lfwt_z', ...
-                    'ltrc_x','ltrc_y','ltrc_z', ...
-                    'lkne_x','lkne_y','lkne_z', ...
-                    'lank_x','lank_y','lank_z', ...
-                    'lhee_x','lhee_y','lhee_z', ...
-                    'lteo_x','lteo_y','lteo_z,' ...
-                }, ...
-                {
-                    obj.lbwt_x,obj.lbwt_y,obj.lbwt_z, ...
-                    obj.lfwt_x,obj.lfwt_y,obj.lfwt_z, ...
-                    obj.ltrc_x,obj.ltrc_y,obj.ltrc_z, ...
-                    obj.lkne_x,obj.lkne_y,obj.lkne_z, ...
-                    obj.lank_x,obj.lank_y,obj.lank_z, ...
-                    obj.lhee_x,obj.lhee_y,obj.lhee_z, ...
-                    obj.lteo_x,obj.lteo_y,obj.lteo_z, ...
-                } ...
-            ) ...
-        )
 
+    % Encode the data into a new JSON string
+    res  = jsonencode(containers.Map({...}, {...}));
 end
 
 function  res = cookAnglesWithPercentageProgress(LIST_ANGLES)
+    % Converts angle data into a JSON string with percentage progress.
+    % This function takes a list of angles for different gait cycles and
+    % encodes them into a JSON string. The angles are organized by their
+    % anatomical location and phase in the gait cycle.
 
+    % Generate a list of angles with their gait cycle percentage
     lstResAngles = createGaitCycleInPercentageObj(LIST_ANGLES);
     
-    res  = ...
-        jsonencode( ...
+    % Encode the structured data into a JSON string
+    res  = jsonencode( ...
             containers.Map( ...
-                {
+                {   % Keys representing different angles
                     'sagittal_hip_ang', ...
                     'sagittal_plv_ang', ...
                     'sagittal_kne_ang', ...
-                    'sagittal_ank_ang' ...
+                    'sagittal_ank_ang', ...
                     'frontal_hip_ang', ...
                     'frontal_plv_ang', ...
                     'frontal_kne_ang', ...
-                    'frontal_ank_ang' ...
+                    'frontal_ank_ang', ...
                     'transversal_hip_ang', ...
                     'transversal_plv_ang', ...
                     'transversal_kne_ang', ...
                     'transversal_ank_ang' ...
                 }, ...
-                {
+                {   % Values are lists of angles for each key
                     lstResAngles{1}, ...
                     lstResAngles{2}, ...
                     lstResAngles{3}, ...
-                    lstResAngles{4} ...
+                    lstResAngles{4}, ...
                     lstResAngles{1}, ...
                     lstResAngles{2}, ...
                     lstResAngles{3}, ...
-                    lstResAngles{4} ...
+                    lstResAngles{4}, ...
                     lstResAngles{1}, ...
                     lstResAngles{2}, ...
                     lstResAngles{3}, ...
@@ -2034,278 +1480,211 @@ function  res = cookAnglesWithPercentageProgress(LIST_ANGLES)
                 } ...
             ) ...
         );
-
 end
 
 function lstRes = createGaitCycleInPercentageObj(MULTI_LIST)
+    % Creates a structured object from a list of angles with their
+    % corresponding gait cycle percentages.
+    % This function decodes a JSON string into a list, then processes
+    % each element to match it with its gait cycle percentage.
 
+    % Decode the JSON string into a list
     mul_list = jsondecode(MULTI_LIST);
     mul_list = struct2cell(mul_list);
 
-    lenLst =size(mul_list,1);
-
+    % Process each list to calculate gait cycle percentages
+    lenLst = size(mul_list,1);
     for ii=1:lenLst
         lstRes{ii} = getHighChartsAngleObject_DATA(mul_list{ii});
     end
-
 end
 
 function res = getHighChartsAngleObject_DATA(LIST)
+    % Generates data points for HighCharts from a list of angles.
+    % This function calculates the gait cycle percentage for each angle
+    % and formats it for visualization with HighCharts.
 
-    lenLst =size(LIST,1);
-    gaitIntervals = 100/(lenLst-1);
+    lenLst = size(LIST,1);
+    gaitIntervals = 100/(lenLst-1);  % Calculate interval percentage
   
     for ii=1:lenLst
-        % data for patient-angles filed
-        percentualGaitProgress = (ii-1)*gaitIntervals;
+        % Calculate percentage progress and corresponding angle
+        percentualGaitProgress = (ii-1) * gaitIntervals;
         gaitAngle = LIST(ii,1);
 
-        res{ii} = [ percentualGaitProgress, gaitAngle ];
-        
-        ii = ii+1;  
+        % Store the result in a structured format
+        res{ii} = [percentualGaitProgress, gaitAngle];
     end
-
 end
 
-
-function testPUTPUT(DATA) %OK It sends throug oniline matlab, since from here has a wierd problem
-
+function testPUTPUT(DATA) %OK It sends through online Matlab, since from here has a weird problem
+    % Define the URI for the PUT request
     uri = matlab.net.URI('http://52.89.123.49:8080/api/kinematics_analysis_matlab/58327fa19d4fe93d29435261');
 
+    % Set up the content type and token for the request header
     contentType = matlab.net.http.HeaderField('ContentType','application/json');
-    token       = matlab.net.http.HeaderField('x-access-token','eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyIkX18iOnsic3RyaWN0TW9kZSI6dHJ1ZSwiZ2V0dGVycyI6e30sIndhc1BvcHVsYXRlZCI6ZmFsc2UsImFjdGl2ZVBhdGhzIjp7InBhdGhzIjp7Im1lZGljYWxDZW50ZXJzLnJlcXVlc3RlZF9hdCI6ImRlZmF1bHQiLCJfX3YiOiJpbml0IiwiYWRkcmVzcy5jb3VudHJ5IjoiaW5pdCIsImFkZHJlc3MuemlwIjoiaW5pdCIsImFkZHJlc3Muc3RhdGUiOiJpbml0IiwiYWRkcmVzcy5jaXR5IjoiaW5pdCIsImFkZHJlc3Muc3RyZWV0IjoiaW5pdCIsIm1lZGljYWxDZW50ZXJzLmFjY2VwdGVkX2F0IjoiaW5pdCIsIm1lZGljYWxDZW50ZXJzLnN0YXR1c19yZXF1ZXN0IjoiaW5pdCIsIm1lZGljYWxDZW50ZXJzLm5hbWUiOiJpbml0IiwibWVkaWNhbENlbnRlcnMuX2lkIjoiaW5pdCIsIm5hbWVzIjoiaW5pdCIsImdlbmRlciI6ImluaXQiLCJpZF9Eb2N1bWVudF90eXBlIjoiaW5pdCIsImlkX0RvY3VtZW50X251bSI6ImluaXQiLCJiaXJ0aCI6ImluaXQiLCJlbWFpbCI6ImluaXQiLCJwaG9uZSI6ImluaXQiLCJjZWxscGhvbmUiOiJpbml0IiwibnVtX2N0bXAiOiJpbml0IiwibnVtX25kdGEiOiJpbml0IiwiaXNfYWN0aXZlIjoiaW5pdCIsInVzZXJuYW1lIjoiaW5pdCIsInBhc3N3b3JkIjoiaW5pdCIsIl9pZCI6ImluaXQifSwic3RhdGVzIjp7Imlnbm9yZSI6e30sImRlZmF1bHQiOnsibWVkaWNhbENlbnRlcnMucmVxdWVzdGVkX2F0Ijp0cnVlfSwiaW5pdCI6eyJfX3YiOnRydWUsImFkZHJlc3MuY291bnRyeSI6dHJ1ZSwiYWRkcmVzcy56aXAiOnRydWUsImFkZHJlc3Muc3RhdGUiOnRydWUsImFkZHJlc3MuY2l0eSI6dHJ1ZSwiYWRkcmVzcy5zdHJlZXQiOnRydWUsIm1lZGljYWxDZW50ZXJzLmFjY2VwdGVkX2F0Ijp0cnVlLCJtZWRpY2FsQ2VudGVycy5zdGF0dXNfcmVxdWVzdCI6dHJ1ZSwibWVkaWNhbENlbnRlcnMubmFtZSI6dHJ1ZSwibWVkaWNhbENlbnRlcnMuX2lkIjp0cnVlLCJuYW1lcyI6dHJ1ZSwiZ2VuZGVyIjp0cnVlLCJpZF9Eb2N1bWVudF90eXBlIjp0cnVlLCJpZF9Eb2N1bWVudF9udW0iOnRydWUsImJpcnRoIjp0cnVlLCJlbWFpbCI6dHJ1ZSwicGhvbmUiOnRydWUsImNlbGxwaG9uZSI6dHJ1ZSwibnVtX2N0bXAiOnRydWUsIm51bV9uZHRhIjp0cnVlLCJpc19hY3RpdmUiOnRydWUsInVzZXJuYW1lIjp0cnVlLCJwYXNzd29yZCI6dHJ1ZSwiX2lkIjp0cnVlfSwibW9kaWZ5Ijp7fSwicmVxdWlyZSI6e319LCJzdGF0ZU5hbWVzIjpbInJlcXVpcmUiLCJtb2RpZnkiLCJpbml0IiwiZGVmYXVsdCIsImlnbm9yZSJdfSwiZW1pdHRlciI6eyJkb21haW4iOm51bGwsIl9ldmVudHMiOnt9LCJfZXZlbnRzQ291bnQiOjAsIl9tYXhMaXN0ZW5lcnMiOjB9fSwiaXNOZXciOmZhbHNlLCJfZG9jIjp7ImFkZHJlc3MiOnsiY291bnRyeSI6IlBlcnUiLCJ6aXAiOjQ1NzY0NSwic3RhdGUiOiJMaW1hIiwiY2l0eSI6IkxpbWEiLCJzdHJlZXQiOiJDYWxsZSBBbGFtZWRhIFNhbnRvcyAzNDQgRHB0byAzMDQifSwibWVkaWNhbENlbnRlcnMiOnsicmVxdWVzdGVkX2F0IjoiMjAxNi0xMi0xNVQwMTo1Mzo0Mi4xMzJaIiwiYWNjZXB0ZWRfYXQiOiIyMDE2LTExLTIwVDA0OjE5OjEzLjAwMFoiLCJzdGF0dXNfcmVxdWVzdCI6IjEiLCJuYW1lIjoiTHVpcyBNYW51ZWwiLCJfaWQiOiIzNDU2Nzg5MDQ1NjU4NDhmcjVnciJ9LCJfX3YiOjAsIm5hbWVzIjoiSG9ydGVuY2lhIiwiZ2VuZGVyIjoiNCIsImlkX0RvY3VtZW50X3R5cGUiOiJETkkiLCJpZF9Eb2N1bWVudF9udW0iOjEyMzQ1Njc4LCJiaXJ0aCI6IjIwMTYtMTEtMjBUMDQ6MTk6MTMuMDAwWiIsImVtYWlsIjoibWFudWVsQGdtYWlsLmNvbSIsInBob25lIjoiMjM0IDU0IDEzIiwiY2VsbHBob25lIjoiOTk5IDk5OSA5OTkiLCJudW1fY3RtcCI6NjU0MiwibnVtX25kdGEiOjU0NTM0NTQzLCJpc19hY3RpdmUiOmZhbHNlLCJ1c2VybmFtZSI6InRlcmFwZXV0YSIsInBhc3N3b3JkIjoiYWRtaW4iLCJfaWQiOiI1ODUxZjYwMTczZGMxMTA3MmEwYTFhOTIifSwiX3ByZXMiOnsiJF9fb3JpZ2luYWxfc2F2ZSI6W251bGwsbnVsbF0sIiRfX29yaWdpbmFsX3ZhbGlkYXRlIjpbbnVsbF0sIiRfX29yaWdpbmFsX3JlbW92ZSI6W251bGxdfSwiX3Bvc3RzIjp7IiRfX29yaWdpbmFsX3NhdmUiOltdLCIkX19vcmlnaW5hbF92YWxpZGF0ZSI6W10sIiRfX29yaWdpbmFsX3JlbW92ZSI6W119LCJpYXQiOjE0ODE3NjY4MjJ9.xDNN-rILCYc5vqVJzpLn3DIqOqMMPTEBuYHgvISoHPw');
-    data = '{"frontal_ank_ang":[[0,36.6239548],[25,36.4931221],[50,37.341877],[75,36.720871],[100,37.5084839]],"frontal_hip_ang":[[0,-15.1074829],[25,-18.0453186],[50,-19.9585114],[75,-18.5435333],[100,-17.369957]],"frontal_kne_ang":[[0,11.1828613],[25,11.6198273],[50,11.7042236],[75,12.1821899],[100,12.5167847]],"frontal_plv_ang":[[0,32.3737335],[25,34.7032623],[50,35.633728],[75,33.6650696],[100,32.0141296]],"lank_x":[-0.196061328,-0.203023106,-0.218700916,-0.225095689,-0.231692597],"lank_y":[-0.420783848,-0.42057389,-0.421292871,-0.42000255,-0.419347942],"lank_z":[2.17449808,2.16681194,2.16470051,2.15764642,2.15254688],"lbwt_x":[-0.393105537,-0.396787971,-0.396567762,-0.396149278,-0.396363825],"lbwt_y":[0.5032323,0.505407453,0.504468918,0.503683329,0.503267586],"lbwt_z":[2.09581971,2.10831928,2.10714889,2.1042223,2.10406065],"lfwt_x":[-0.452916354,-0.453837514,-0.452574,-0.4539482,-0.455589712],"lfwt_y":[0.465313643,0.465899676,0.464322478,0.465187132,0.466238827],"lfwt_z":[2.06577969,2.06500983,2.05494,2.05894017,2.06281328],"lhee_x":[-0.309819102,-0.317615777,-0.332148224,-0.337794483,-0.346177489],"lhee_y":[-0.284540892,-0.285112321,-0.285361111,-0.284648478,-0.2865206],"lhee_z":[2.03655028,2.03527379,2.03279686,2.02381492,2.02748036],"lkne_x":[-0.449661583,-0.454836875,-0.461455703,-0.466332018,-0.471145421],"lkne_y":[0.0472802892,0.0475298762,0.0474403,0.0473098457,0.0473588556],"lkne_z":[2.07491016,2.07238793,2.05870271,2.059623,2.05925727],"lteo_x":[-0.363877326,-0.372853577,-0.38802281,-0.396190941,-0.401162326],"lteo_y":[-0.400856256,-0.402344018,-0.403678596,-0.404509485,-0.40268153],"lteo_z,":[2.09296727,2.09668612,2.09081817,2.08942771,2.07546449],"ltrc_x":[-0.587236404,-0.587881267,-0.586992264,-0.587410867,-0.58835113],"ltrc_y":[0.489899963,0.49217546,0.494793296,0.495378137,0.495900422],"ltrc_z":[2.08689213,2.08598948,2.08208537,2.08216238,2.08255839],"sagittal_ank_ang":[[0,36.6239548],[25,36.4931221],[50,37.341877],[75,36.720871],[100,37.5084839]],"sagittal_hip_ang":[[0,-15.1074829],[25,-18.0453186],[50,-19.9585114],[75,-18.5435333],[100,-17.369957]],"sagittal_kne_ang":[[0,11.1828613],[25,11.6198273],[50,11.7042236],[75,12.1821899],[100,12.5167847]],"sagittal_plv_ang":[[0,32.3737335],[25,34.7032623],[50,35.633728],[75,33.6650696],[100,32.0141296]],"transversal_ank_ang":[[0,36.6239548],[25,36.4931221],[50,37.341877],[75,36.720871],[100,37.5084839]],"transversal_hip_ang":[[0,-15.1074829],[25,-18.0453186],[50,-19.9585114],[75,-18.5435333],[100,-17.369957]],"transversal_kne_ang":[[0,11.1828613],[25,11.6198273],[50,11.7042236],[75,12.1821899],[100,12.5167847]],"transversal_plv_ang":[[0,32.3737335],[25,34.7032623],[50,35.633728],[75,33.6650696],[100,32.0141296]]}';
+    token       = matlab.net.http.HeaderField('x-access-token','xxxxxxxx');
+    
+    % Define the data to be sent in the request
+    data = '{"frontal_ank_ang":[[0,36.6239548],[25,36.4931221],[50,37.341877],[75,36.720871],[100,37.5084839]],...}';
     data = matlab.net.http.HeaderField('data',data);
+    
+    % Combine all header fields
     header = [contentType token data];
     
-    request=matlab.net.http.RequestMessage('put',header,matlab.net.http.MessageBody('useless'))
-    response=request.send( uri)
-
+    % Create the PUT request with the specified header and body
+    request=matlab.net.http.RequestMessage('put',header,matlab.net.http.MessageBody('useless'));
+    
+    % Send the request and store the response
+    response=request.send(uri);
 end
 
 function testAdjustContrust() 
+    % Read an image file for contrast adjustment
     RGB = imread('./visionData/removeBackground/toCalibrate.png');
-    imshow(RGB)
-%     RGB2 = imadjust(RGB,[.5 .4 0; .6 .7 1],[]);
-%     imshow(RGB2)
+    imshow(RGB); % Display the original image
 
+    % Apply local Laplacian filtering for contrast adjustment
     sigma = 0.4;
     alpha = 0.8;
     B = locallapfilt(RGB, sigma, alpha);
-    imshowpair(RGB, B, 'montage')
-    int =2;
-
+    
+    % Display the original and adjusted images side by side
+    imshowpair(RGB, B, 'montage');
 end
 
 %% Sync methods
 function AnalyzeAudio()
-
-
-    % =====
+    % Define paths to audio files from two cameras
     a = '../ekenRawFiles/camera_a/test_14_video/FHD0001.MOV';
     b = '../ekenRawFiles/camera_b/test_14_video/FHD0002.MOV'; 
 
-%     atw = CSynchAudio;
-%     wavFile = atw.aviToWavFile(b,'14_b');
-    % disp(wavFile);
-
-    % a = audioread('target_file_a.WAV');
+    % Read audio data from files
     a = audioread('audio_test_14_a.WAV');
     b = audioread('audio_test_14_b.WAV');
-        Y = fft(abs(a));
-        Z = fft(abs(b));
-        subplot(3,1,1), plot (a), title('a');
-        subplot(3,1,2), plot (b), title('b')
-    %     [C1, lag1] = xcorr(Y,Z);
-    %     subplot(3,1,3), plot(lag1/Fs,C1);
-    %     ylabel('Amplitude'); grid on
-    %     title('Cross-correlation between Template 1 and Signal')
-    % subplot(3,3,4), imshow(hsv(:,:,2)), title('HSV_V');
-
-
-
-    % =======
+    
+    % Perform FFT on the audio signals
+    Y = fft(abs(a));
+    Z = fft(abs(b));
+    
+    % Plot the original audio signals
+    subplot(3,1,1), plot(a), title('Audio from Camera A');
+    subplot(3,1,2), plot(b), title('Audio from Camera B');
 end
 
-    % blobImg_l  ...
-    % blobImg_r ...
-function [ ...
-    isSync ...
-    outOfPhase_l  ...
-    outOfPhase_r  ...
-    isBlinking_l  ...
-    isBlinking_r  ...
-    ] = ...
-    DetectOutOfPhaseFrames( ...
-        FRAME_LEFT, ...
-        FRAME_RIGHT, ...
-        OUT_OF_PHASE_L, ...
-        OUT_OF_PHASE_R,  ...
-        IS_BLINKING_LEFT, ...
-        IS_BLINKING_RIGHT, ...
-        SYNC_UMBRAL, ...
-        TOP_LIM, BOT_LIM, LEF_LIM, RIG_LIM ...
-    )
-    % 1 => L R 0 0 F F
-    % 2 =>         F F
-    % 3 =>         V F
-    % 4 =>    11 0 V V
-    % 5 =>             => isSync =  true
+function [isSync, outOfPhase_l, outOfPhase_r, isBlinking_l, isBlinking_r] = ...
+    DetectOutOfPhaseFrames(FRAME_LEFT, FRAME_RIGHT, OUT_OF_PHASE_L, OUT_OF_PHASE_R, IS_BLINKING_LEFT, IS_BLINKING_RIGHT, SYNC_UMBRAL, TOP_LIM, BOT_LIM, LEF_LIM, RIG_LIM)
+    % Initialize synchronization status as false
     isSync = false;
 
+    % Check if both left and right frames are blinking
     if(IS_BLINKING_LEFT && IS_BLINKING_RIGHT)
-        isSync= true;
+        isSync = true;
     else
-
+        % Detect first blink in the left frame if not already blinking
         if ~IS_BLINKING_LEFT
-            [ isBlinking_l, blobImg_l ] = DetectFirstBlink(FRAME_LEFT, SYNC_UMBRAL, 50, TOP_LIM, BOT_LIM, LEF_LIM, RIG_LIM);
-            IS_BLINKING_LEFT =  isBlinking_l;
-            % counting the frames before the fist blink
-            OUT_OF_PHASE_L = OUT_OF_PHASE_L + 1;
+            [isBlinking_l, blobImg_l] = DetectFirstBlink(FRAME_LEFT, SYNC_UMBRAL, 50, TOP_LIM, BOT_LIM, LEF_LIM, RIG_LIM);
+            IS_BLINKING_LEFT = isBlinking_l;
+            OUT_OF_PHASE_L = OUT_OF_PHASE_L + 1; % Increment out-of-phase counter
         end 
 
+        % Detect first blink in the right frame if not already blinking
         if ~IS_BLINKING_RIGHT
-            [ isBlinking_r, blobImg_r ] = DetectFirstBlink(FRAME_RIGHT, SYNC_UMBRAL, 50, TOP_LIM, BOT_LIM, LEF_LIM, RIG_LIM);
+            [isBlinking_r, blobImg_r] = DetectFirstBlink(FRAME_RIGHT, SYNC_UMBRAL, 50, TOP_LIM, BOT_LIM, LEF_LIM, RIG_LIM);
             IS_BLINKING_RIGHT = isBlinking_r;
-            % counting the frames before the first blink
-            OUT_OF_PHASE_R = OUT_OF_PHASE_R + 1;
+            OUT_OF_PHASE_R = OUT_OF_PHASE_R + 1; % Increment out-of-phase counter
         end
     end
 
-    % results
+    % Return the updated synchronization status and counters
     outOfPhase_l = OUT_OF_PHASE_L;
     outOfPhase_r = OUT_OF_PHASE_R;
     isBlinking_l = IS_BLINKING_LEFT;
     isBlinking_r = IS_BLINKING_RIGHT;
-    
+
+    % Final determination of synchronization based on blinking detection
 end
 
-function [ isBlinking  blobImage ] = DetectFirstBlink(I1, THRESH_MIN, MIN_AREA, TOP_LIM, BOT_LIM, LEF_LIM, RIG_LIM)
-    
-    isBlinking = false;
+% Detects the first blink in an image based on threshold and area
+function [isBlinking, blobImage] = DetectFirstBlink(I1, THRESH_MIN, MIN_AREA, TOP_LIM, BOT_LIM, LEF_LIM, RIG_LIM)
+    isBlinking = false; % Initialize blinking flag
 
-    GI1 = rgb2gray(I1);
-    BW1_TH = THRESH_MIN < GI1;
-    BW1 = bwconncomp(BW1_TH); 
+    GI1 = rgb2gray(I1); % Convert image to grayscale
+    BW1_TH = GI1 > THRESH_MIN; % Apply threshold
+    BW1 = bwconncomp(BW1_TH); % Detect connected components
     
-    stats = regionprops(BW1, 'Area','Eccentricity'); 
-    mean_area =  mean([stats.Area]); 
-    ids = find([stats.Area] >= MIN_AREA); 
-    blobImage = ismember(labelmatrix(BW1), ids); 
+    stats = regionprops(BW1, 'Area', 'Eccentricity'); % Get blob properties
+    mean_area = mean([stats.Area]); % Calculate mean area
+    ids = find([stats.Area] >= MIN_AREA); % Filter blobs by area
+    blobImage = ismember(labelmatrix(BW1), ids); % Create binary image of blobs
     
-    % Calculate centroids
-    CC1 = regionprops(blobImage,'centroid');
-    markerPoints = single(cat(1,CC1.Centroid));
+    % Calculate centroids of blobs
+    CC1 = regionprops(blobImage, 'centroid');
+    markerPoints = single(cat(1, CC1.Centroid));
     
-    length = size(markerPoints,1);
-    cont = 0;
-    for i=1:length
-       if markerPoints(i,2) >  TOP_LIM && ...
-          markerPoints(i,2) <  BOT_LIM && ...
-          markerPoints(i,1) >  LEF_LIM && ...
-          markerPoints(i,1) <  RIG_LIM 
-           cont = cont + 1;
+    % Check if any centroids are within specified limits
+    for i = 1:size(markerPoints, 1)
+       if markerPoints(i, 2) > TOP_LIM && markerPoints(i, 2) < BOT_LIM && ...
+          markerPoints(i, 1) > LEF_LIM && markerPoints(i, 1) < RIG_LIM
+           isBlinking = true; % Set blinking flag if conditions are met
+           break; % Exit loop if a blinking is detected
        end
     end
+end
+
+% Determines if an image contains blinking based on threshold
+function res = IsBlinking(I1, THRESH_MIN)
+    BW1_TH = THRESH_MIN < rgb2gray(I1); % Apply threshold to grayscale image
+
+    BW1 = bwconncomp(BW1_TH); % Detect connected components
+
+    stats = regionprops(BW1, 'Area', 'Eccentricity'); % Get blob properties
+    mean_area = mean([stats.Area]); % Calculate mean area
+    ids = find([stats.Area] > mean_area); % Filter blobs by area
     
-    
-    % return marker binary image and isSyncBlob
-    if(cont > 0)
-%     if (length > 0)
-        isBlinking = true;
+    res = size(ids, 1) >= 1; % Return true if any blobs are found
+end
+
+% Saves synchronization data to a text file
+function SaveTxtFile(countLeft, countRight)
+    fileId = fopen('compareSync.txt', 'w'); % Open file for writing
+    fprintf(fileId, 'Compare L - R \n\n'); % Write header
+    length = size(countLeft, 2); % Get number of elements
+    for i = 1:1:length
+        fprintf(fileId, '%f ', countLeft{i}); % Write left count
+        fprintf(fileId, '%f \n', countRight{i}); % Write right count
     end
+    fclose(fileId); % Close file
+end
+
+% Plots blink counts for left and right sides
+function PlotBlinks(countLeft, countRight)
+    joinMat = [countLeft{:}; countRight{:}]; % Join left and right counts
     
+    subplot(3, 1, 1), plot([countLeft{:}]), title('left'); % Plot left counts
+    subplot(3, 1, 2), plot([countRight{:}]), title('right'); % Plot right counts
+    subplot(3, 1, 3), plot(joinMat'), title('both'); % Plot both counts
 end
 
-function res = IsBlinking(I1,THRESH_MIN)
 
-        BW1_TH = THRESH_MIN < rgb2gray(I1) ;
-
-        BW1 = bwconncomp(BW1_TH); 
-
-        stats = regionprops(BW1, 'Area','Eccentricity'); 
-        mean_area =  mean([stats.Area]);
-        ids = find([stats.Area] > mean_area); 
-%         ids = find([stats.Area] > 300); 
-        if size(ids,1) >= 1
-            res = 1;
-        else
-            res = 0;
-        end
-end
-
-function SaveTxtFile(countLeft,countRight)
-    raw = [countLeft,countRight];
-    fileId = fopen('compareSync.txt','w');
-    fprintf(fileId,'Compare L - R \n\n');
-    lenght = size(countLeft,2);
-    for i=1:1:lenght
-        fprintf(fileId,'%f ',countLeft{i});
-        fprintf(fileId,'%f \n',countRight{i});
-    end
-    fclose(fileId);
-  
-%     type compareSync.txt;
-
-end
-
-function PlotBlinks(countLeft,countRight)
-    
-    joinMat = [countLeft{:};countRight{:}];
-   
-    subplot(3,1,1), plot([countLeft{:}]), title('left')
-    subplot(3,1,2), plot([countRight{:}]), title('right')
-    subplot(3,1,3), plot(joinMat'), title('both')
-   
-end
-
-function ConvSameImg (img_)
-
-    I = myTechnique(img_);
- 
-    a =1;
-end
-
-function CoolFeatures ()
-    % whar? =>  roughly show each gait phase in a piture 
-    % how?  =>  leaving a trace every moment a key is pressed or
-    %           automatically done by following the gait percentage
-    % result=>  an single image with 7 different position(gait phases)
-
-end
-
+% Visualizes labels on images
 function VisualizeLabels(frameLeft, frameLeftBinary, frameRightBinary, markerSortPoints)
-    
-    % Visualize labels in boxes
+    % Analyze blobs in binary images
     blobAnalysis = vision.BlobAnalysis('BoundingBoxOutputPort', true, ...
         'AreaOutputPort', false, 'CentroidOutputPort', false, ...
         'MinimumBlobArea', 30);
 
+    % Get bounding boxes for left and right binary images
     bboxLeft = step(blobAnalysis, frameLeftBinary);
     bboxRight = step(blobAnalysis, frameRightBinary);
 
-    result = insertShape(frameLeft, 'Rectangle', bboxLeft, 'LineWidth' , 5 , 'Color', 'red');
-%     result = insertShape(result, 'Rectangle', bboxRight, 'LineWidth' , 5 , 'Color', 'green');
+    % Insert bounding boxes into the left frame image
+    result = insertShape(frameLeft, 'Rectangle', bboxLeft, 'LineWidth', 5, 'Color', 'red');
 
+    % Insert number of markers detected
     numMarkers = size(bboxLeft, 1);
-    result = insertText(result, [10 10], numMarkers, 'BoxOpacity', 1, ...
-        'FontSize', 24);
+    result = insertText(result, [10 10], numMarkers, 'BoxOpacity', 1, 'FontSize', 24);
     
-    % Adding labels: lbwt lfwt ltrc lkne lank lhee lteo
-%     result =  insertText(result, [markerSortPoints(1,1) markerSortPoints(1,2)], 'TOE', 'BoxOpacity', 1, ...
-%         'FontSize', 18);
-%     result =  insertText(result, [markerSortPoints(2,1) markerSortPoints(2,2)], 'HEE', 'BoxOpacity', 1, ...
-%         'FontSize', 18);
-%     result =  insertText(result, [markerSortPoints(3,1) markerSortPoints(3,2)], 'ANK', 'BoxOpacity', 1, ...
-%         'FontSize', 18);
-%     result =  insertText(result, [markerSortPoints(4,1) markerSortPoints(4,2)], 'KNE', 'BoxOpacity', 1, ...
-%         'FontSize', 18);
-%     result =  insertText(result, [markerSortPoints(5,1) markerSortPoints(5,2)], 'TRC', 'BoxOpacity', 1, ...
-%         'FontSize', 18);
-%     result =  insertText(result, [markerSortPoints(6,1) markerSortPoints(6,2)], 'FWT', 'BoxOpacity', 1, ...
-%         'FontSize', 18);
-%     result =  insertText(result, [markerSortPoints(7,1) markerSortPoints(7,2)], 'BWT', 'BoxOpacity', 1, ...
-%         'FontSize', 18);
 
     figure; imshow(result); title('Detected markers');
 end
